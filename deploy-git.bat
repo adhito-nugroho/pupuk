@@ -7,7 +7,8 @@ setlocal enabledelayedexpansion
 set SERVER_USER=adit
 set SERVER_IP=127.0.0.1
 set SERVER_PORT=2222
-set "REMOTE_DIR=C:\laragon\www\website-cdk\pupuk"
+set "PARENT_DIR=C:\laragon\www\website-cdk"
+set "PROJECT_DIR=pupuk"
 set BRANCH=main
 set "REPO_URL=https://github.com/adhito-nugroho/pupuk.git"
 
@@ -53,7 +54,7 @@ echo [2/2] Memperbarui kode di server via SSH...
 echo *(Jika diminta password SSH, masukkan password akun server)*
 echo.
 
-ssh -p %SERVER_PORT% %SERVER_USER%@%SERVER_IP% "if not exist C:\laragon\www\website-cdk mkdir C:\laragon\www\website-cdk & if exist %REMOTE_DIR%\.git (echo [SERVER] Direktori repo ditemukan. Menjalankan git pull... && cd /d %REMOTE_DIR% && %REMOTE_GIT% pull origin %BRANCH%) else (echo [SERVER] Mengkloning repo baru ke %REMOTE_DIR%... && %REMOTE_GIT% clone %REPO_URL% %REMOTE_DIR%)"
+ssh -p %SERVER_PORT% %SERVER_USER%@%SERVER_IP% "cd /d %PARENT_DIR% && (if exist %PROJECT_DIR%\.git (echo [SERVER] Repo ditemukan. Menjalankan git pull... && cd %PROJECT_DIR% && %REMOTE_GIT% pull origin %BRANCH%) else (echo [SERVER] Mengkloning repo baru ke %PARENT_DIR%\%PROJECT_DIR%... && %REMOTE_GIT% clone %REPO_URL% %PROJECT_DIR%))"
 
 if errorlevel 1 (
     echo.
