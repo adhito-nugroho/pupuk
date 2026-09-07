@@ -1,5 +1,5 @@
 <?php
-// Daftar kasus verifikasi — Dashboard utama.
+// Daftar kasus verifikasi — Buku Register Kasus CDK Bojonegoro.
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/lib/db.php';
 require_once __DIR__ . '/lib/helpers.php';
@@ -14,141 +14,185 @@ $rows = db()->query('SELECT k.*,
 $totalKasus  = count($rows);
 $perluRevisi = count(array_filter($rows, fn($r) => ($r['rekomendasi'] ?? '') === 'Perlu Revisi'));
 $dapatTindak = count(array_filter($rows, fn($r) => ($r['rekomendasi'] ?? '') === 'Dapat Ditindaklanjuti'));
+$totalPetani = array_sum(array_map(fn($r) => (int)$r['jml_usulan'], $rows));
 
-layout_head('Daftar Kasus', 'daftar');
+layout_head('Buku Register Kasus', 'daftar');
 ?>
 
-<!-- ═══ Statistik Cards ═══ -->
-<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 fade-in">
-  <div class="glass-card rounded-2xl p-5 flex items-center gap-4">
-    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-500 to-slate-700 flex items-center justify-center text-white text-xl shadow-lg">📋</div>
+<!-- ═══ Bilah Ringkasan Register (Bukan SaaS Stat Card) ═══ -->
+<div class="doc-card mb-6 p-5">
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-5 pb-4 border-b border-kadaster-border">
     <div>
-      <div class="text-2xl font-extrabold text-slate-800"><?= $totalKasus ?></div>
-      <div class="text-xs text-slate-500 font-medium">Total Kasus</div>
+      <div class="text-[11px] font-mono uppercase tracking-wider text-ink-faint">
+        Dokumen Register CDK Bojonegoro · Tahun Anggaran <?= date('Y') ?>
+      </div>
+      <h2 class="font-serif text-2xl font-bold text-ink mt-0.5">
+        Buku Register Verifikasi Usulan Pupuk
+      </h2>
+      <p class="text-xs text-ink-muted mt-1 max-w-2xl leading-relaxed">
+        Pencatatan resmi verifikasi kesesuaian data usulan petani hutan terhadap Surat Keputusan (SK) Menteri LHK dan batas areal peta Perhutanan Sosial (KHDPK).
+      </p>
     </div>
-  </div>
-  <div class="glass-card rounded-2xl p-5 flex items-center gap-4">
-    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white text-xl shadow-lg">✅</div>
-    <div>
-      <div class="text-2xl font-extrabold text-emerald-700"><?= $dapatTindak ?></div>
-      <div class="text-xs text-slate-500 font-medium">Dapat Ditindaklanjuti</div>
-    </div>
-  </div>
-  <div class="glass-card rounded-2xl p-5 flex items-center gap-4">
-    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white text-xl shadow-lg">⚠️</div>
-    <div>
-      <div class="text-2xl font-extrabold text-amber-700"><?= $perluRevisi ?></div>
-      <div class="text-xs text-slate-500 font-medium">Perlu Revisi</div>
-    </div>
-  </div>
-</div>
 
-<!-- ═══ Header + CTA ═══ -->
-<div class="glass-card rounded-2xl p-5 mb-5 fade-in fade-in-delay-1">
-  <div class="flex flex-wrap items-center justify-between gap-3">
-    <div>
-      <h2 class="text-xl font-bold text-slate-800">Daftar Kasus Verifikasi</h2>
-      <p class="text-sm text-slate-500 mt-0.5">Satu kasus = satu KTH/LMDH dengan 3 input (Excel usulan, PDF SK, ZIP shapefile).</p>
-    </div>
-    <a href="baru.php" class="btn-primary px-5 py-2.5 rounded-xl text-sm inline-flex items-center gap-2 shadow">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-      Buat Verifikasi Baru
+    <!-- Tombol Buka Berkas Baru -->
+    <a href="baru.php" class="btn-forest px-4 py-2.5 text-xs inline-flex items-center gap-2 flex-shrink-0">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+      <span>Buka Kasus Verifikasi Baru</span>
     </a>
   </div>
+
+  <!-- Baris Data Faktual (Ledger Summary) -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 text-xs">
+    <div class="border-l-2 border-kadaster-brown pl-3">
+      <div class="text-[11px] text-ink-muted font-medium">Total Kasus KTH</div>
+      <div class="font-mono text-xl font-bold text-ink tabular-nums mt-0.5"><?= $totalKasus ?> <span class="text-xs font-normal text-ink-muted">berkas</span></div>
+    </div>
+    <div class="border-l-2 border-audit-valid pl-3">
+      <div class="text-[11px] text-ink-muted font-medium">Dapat Ditindaklanjuti</div>
+      <div class="font-mono text-xl font-bold text-audit-valid tabular-nums mt-0.5"><?= $dapatTindak ?> <span class="text-xs font-normal text-ink-muted">kasus</span></div>
+    </div>
+    <div class="border-l-2 border-audit-revisi pl-3">
+      <div class="text-[11px] text-ink-muted font-medium">Memerlukan Revisi</div>
+      <div class="font-mono text-xl font-bold text-audit-revisi tabular-nums mt-0.5"><?= $perluRevisi ?> <span class="text-xs font-normal text-ink-muted">kasus</span></div>
+    </div>
+    <div class="border-l-2 border-kadaster-dark pl-3">
+      <div class="text-[11px] text-ink-muted font-medium">Total Petani Terdata</div>
+      <div class="font-mono text-xl font-bold text-ink tabular-nums mt-0.5"><?= number_format($totalPetani, 0, ',', '.') ?> <span class="text-xs font-normal text-ink-muted">orang</span></div>
+    </div>
+  </div>
 </div>
 
-<!-- ═══ Tabel ═══ -->
-<div class="glass-card rounded-2xl overflow-hidden fade-in fade-in-delay-2">
+<!-- ═══ Tabel Register Berkas ═══ -->
+<div class="doc-card overflow-hidden">
+  <div class="px-5 py-3.5 bg-[#FAF8F3] border-b border-kadaster-border flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <span class="w-2 h-2 bg-kadaster-brown inline-block"></span>
+      <h3 class="text-xs font-bold uppercase tracking-wider text-ink">
+        Daftar Berkas Terdaftar
+      </h3>
+    </div>
+    <span class="font-mono text-[11px] text-ink-faint">
+      <?= count($rows) ?> entri tercatat
+    </span>
+  </div>
+
 <?php if (!$rows): ?>
   <div class="py-16 px-6 text-center">
-    <div class="text-6xl mb-4 opacity-60">📂</div>
-    <h3 class="text-lg font-bold text-slate-600 mb-1">Belum ada kasus verifikasi</h3>
-    <p class="text-sm text-slate-400 mb-5">Mulai dengan menambahkan kasus baru untuk memverifikasi data petani.</p>
-    <a href="baru.php" class="btn-primary px-5 py-2.5 rounded-xl text-sm inline-flex items-center gap-2">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-      Buat Verifikasi Baru
+    <div class="w-12 h-12 border border-dashed border-kadaster-brown/40 text-kadaster-brown mx-auto flex items-center justify-center mb-3">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+      </svg>
+    </div>
+    <h3 class="font-serif text-base font-bold text-ink mb-1">Belum Ada Berkas Kasus</h3>
+    <p class="text-xs text-ink-muted mb-4 max-w-sm mx-auto">
+      Belum ada data kasus KTH yang dimasukkan. Silakan mulai dengan membuat berkas verifikasi usulan baru.
+    </p>
+    <a href="baru.php" class="btn-forest px-4 py-2 text-xs inline-flex items-center gap-1.5">
+      + Buka Kasus Baru
     </a>
   </div>
 <?php else: ?>
-<div class="overflow-x-auto">
-<table class="min-w-full text-sm">
-  <thead>
-    <tr class="bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200">
-      <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">ID</th>
-      <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">KTH / LMDH</th>
-      <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">No. SK</th>
-      <th class="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Tahun</th>
-      <th class="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Usulan</th>
-      <th class="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Anggota SK</th>
-      <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Rekomendasi</th>
-      <th class="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Aksi</th>
-    </tr>
-  </thead>
-  <tbody class="divide-y divide-slate-100">
-  <?php foreach ($rows as $idx => $r): ?>
-    <tr class="tbl-row <?= $idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50' ?>">
-      <td class="px-4 py-3">
-        <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 text-slate-600 text-xs font-bold"><?= (int)$r['id'] ?></span>
-      </td>
-      <td class="px-4 py-3">
-        <div class="font-semibold text-slate-800"><?= e($r['nama_kth']) ?></div>
-        <?php if ($r['nama_kph'] ?? ''): ?>
-          <div class="text-xs text-slate-400 mt-0.5"><?= e($r['nama_kph']) ?></div>
-        <?php endif; ?>
-      </td>
-      <td class="px-4 py-3 text-slate-600 text-xs font-mono"><?= e($r['nomor_sk'] ?? '-') ?></td>
-      <td class="px-4 py-3 text-center">
-        <span class="inline-flex items-center px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 text-xs font-semibold"><?= e($r['tahun_usulan'] ?? '-') ?></span>
-      </td>
-      <td class="px-4 py-3 text-center font-bold text-slate-700"><?= (int)$r['jml_usulan'] ?></td>
-      <td class="px-4 py-3 text-center font-bold text-slate-700"><?= (int)$r['jml_sk'] ?></td>
-      <td class="px-4 py-3">
-        <?php
-          $rek = $r['rekomendasi'] ?? '';
-          if ($rek === 'Dapat Ditindaklanjuti'):
-        ?>
-          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200/50">
-            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-            Dapat Ditindaklanjuti
-          </span>
-        <?php elseif ($rek === 'Perlu Revisi'): ?>
-          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 ring-1 ring-amber-200/50">
-            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
-            Perlu Revisi
-          </span>
-        <?php else: ?>
-          <span class="text-xs text-slate-400">—</span>
-        <?php endif; ?>
-      </td>
-      <td class="px-4 py-3">
-        <div class="flex items-center justify-center gap-1">
-          <a href="konfirmasi_sk.php?kth_id=<?= (int)$r['id'] ?>" title="Konfirmasi SK"
-            class="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 hover:bg-sky-100 flex items-center justify-center smooth-all">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-          </a>
-          <a href="hasil.php?kth_id=<?= (int)$r['id'] ?>" title="Hasil Verifikasi"
-            class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center justify-center smooth-all">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-          </a>
-          <a href="cetak_peta.php?kth_id=<?= (int)$r['id'] ?>" target="_blank" title="Cetak Peta"
-            class="w-8 h-8 rounded-lg bg-teal-50 text-teal-600 hover:bg-teal-100 flex items-center justify-center smooth-all">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-          </a>
-          <a href="laporan.php?kth_id=<?= (int)$r['id'] ?>" title="Laporan"
-            class="w-8 h-8 rounded-lg bg-violet-50 text-violet-600 hover:bg-violet-100 flex items-center justify-center smooth-all">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-          </a>
-          <a href="hapus.php?kth_id=<?= (int)$r['id'] ?>" onclick="return confirm('Hapus kasus ini beserta seluruh datanya?')" title="Hapus"
-            class="w-8 h-8 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center smooth-all">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-          </a>
-        </div>
-      </td>
-    </tr>
-  <?php endforeach; ?>
-  </tbody>
-</table>
-</div>
+  <div class="overflow-x-auto">
+    <table class="min-w-full text-xs text-left">
+      <thead>
+        <tr class="bg-[#F6F2E9] border-b border-kadaster-border text-[11px] font-semibold text-ink-muted">
+          <th class="py-2.5 px-3.5 w-12 text-center">No</th>
+          <th class="py-2.5 px-3.5">Lembaga Pemohon (KTH / LMDH)</th>
+          <th class="py-2.5 px-3.5">Nomor SK Perhutanan Sosial</th>
+          <th class="py-2.5 px-3 text-center">Tahun</th>
+          <th class="py-2.5 px-3 text-right">Diusulkan</th>
+          <th class="py-2.5 px-3 text-right">SK Anggota</th>
+          <th class="py-2.5 px-3.5">Status Rekomendasi</th>
+          <th class="py-2.5 px-3.5 text-center">Tindakan Berkas</th>
+        </tr>
+      </thead>
+      <tbody>
+      <?php foreach ($rows as $idx => $r): ?>
+        <tr class="hairline-row bg-white">
+          <td class="py-3 px-3.5 text-center font-mono text-[11px] text-ink-faint">
+            <?= sprintf('%02d', $idx + 1) ?>
+          </td>
+          <td class="py-3 px-3.5">
+            <div class="font-bold text-ink leading-snug">
+              <?= e($r['nama_kth']) ?>
+            </div>
+            <?php if ($r['nama_kph'] ?? ''): ?>
+              <div class="text-[11px] text-kadaster-brown font-medium mt-0.5">
+                <?= e($r['nama_kph']) ?>
+              </div>
+            <?php endif; ?>
+          </td>
+          <td class="py-3 px-3.5 font-mono text-[11px] text-ink-muted">
+            <?= e($r['nomor_sk'] ?? '-') ?>
+          </td>
+          <td class="py-3 px-3 text-center font-mono text-[11px] text-ink-muted">
+            <?= e($r['tahun_usulan'] ?? '-') ?>
+          </td>
+          <td class="py-3 px-3 text-right font-mono font-bold text-ink tabular-nums">
+            <?= (int)$r['jml_usulan'] ?>
+          </td>
+          <td class="py-3 px-3 text-right font-mono font-bold text-ink tabular-nums">
+            <?= (int)$r['jml_sk'] ?>
+          </td>
+          <td class="py-3 px-3.5">
+            <?php
+              $rek = $r['rekomendasi'] ?? '';
+              if ($rek === 'Dapat Ditindaklanjuti'):
+            ?>
+              <span class="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-semibold text-audit-valid bg-audit-validBg border border-audit-validBorder border-l-2 border-l-audit-valid">
+                <span class="w-1.5 h-1.5 bg-audit-valid inline-block"></span>
+                Dapat Ditindaklanjuti
+              </span>
+            <?php elseif ($rek === 'Perlu Revisi'): ?>
+              <span class="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-semibold text-audit-revisi bg-audit-revisiBg border border-audit-revisiBorder border-l-2 border-l-audit-revisi">
+                <span class="w-1.5 h-1.5 bg-audit-revisi inline-block"></span>
+                Perlu Revisi
+              </span>
+            <?php else: ?>
+              <span class="text-xs text-ink-faint italic">Belum diverifikasi</span>
+            <?php endif; ?>
+          </td>
+          <td class="py-3 px-3.5">
+            <div class="flex items-center justify-center gap-1">
+              <a href="konfirmasi_sk.php?kth_id=<?= (int)$r['id'] ?>"
+                 title="Tahap 2: Konfirmasi SK"
+                 class="px-2 py-1 border border-kadaster-border text-ink-muted hover:text-forest-900 hover:border-forest-900 bg-[#FAF8F3] text-[11px] font-medium transition-colors">
+                SK
+              </a>
+              <a href="hasil.php?kth_id=<?= (int)$r['id'] ?>"
+                 title="Tahap 3: Uji Spasial & Titik"
+                 class="px-2 py-1 border border-kadaster-border text-ink-muted hover:text-forest-900 hover:border-forest-900 bg-[#FAF8F3] text-[11px] font-medium transition-colors">
+                Peta
+              </a>
+              <a href="cetak_peta.php?kth_id=<?= (int)$r['id'] ?>"
+                 target="_blank"
+                 title="Cetak Peta Format BPKH"
+                 class="px-2 py-1 border border-kadaster-border text-ink-muted hover:text-forest-900 hover:border-forest-900 bg-[#FAF8F3] text-[11px] font-medium transition-colors">
+                Cetak
+              </a>
+              <a href="laporan.php?kth_id=<?= (int)$r['id'] ?>"
+                 title="Tahap 4: Berita Acara & Laporan"
+                 class="px-2 py-1 border border-kadaster-border text-ink-muted hover:text-forest-900 hover:border-forest-900 bg-[#FAF8F3] text-[11px] font-medium transition-colors">
+                Laporan
+              </a>
+              <a href="hapus.php?kth_id=<?= (int)$r['id'] ?>"
+                 onclick="return confirm('Hapus berkas kasus ini beserta seluruh datanya?')"
+                 title="Hapus Berkas"
+                 class="px-1.5 py-1 border border-audit-revisiBorder text-audit-revisi hover:bg-audit-revisiBg text-[11px] transition-colors ml-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+              </a>
+            </div>
+          </td>
+        </tr>
+      <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
 <?php endif; ?>
 </div>
+
 <?php layout_foot(); ?>

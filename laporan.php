@@ -37,154 +37,233 @@ if (!$lap) {
 $pctSK = $hitung['total'] > 0 ? round($hitung['sesuai'] / $hitung['total'] * 100) : 0;
 $pctPeta = $hitung['total'] > 0 ? round($hitung['dalam'] / $hitung['total'] * 100) : 0;
 $rekomFinal = $lap['rekomendasi'] ?? $rekomAuto;
+$isSesuaiSemua = ($rekomFinal === 'Dapat Ditindaklanjuti');
 
-layout_head('Laporan Akhir — ' . $k['nama_kth']);
+layout_head('Berita Acara Rekomendasi — ' . $k['nama_kth']);
 wizard(4);
 ?>
 
-<!-- ═══ Header ═══ -->
-<div class="glass-card rounded-2xl p-6 mb-5 max-w-5xl fade-in">
-  <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2.5">
-    <span class="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-700 text-white flex items-center justify-center text-sm">4</span>
-    Laporan Akhir — <?= e($k['nama_kth']) ?>
-  </h2>
-  <p class="text-sm text-slate-500 mt-1.5 ml-10">SK: <?= e($k['nomor_sk'] ?? '-') ?> · Tahun: <?= e($lap['tahun'] ?? '-') ?></p>
+<!-- ═══ HEADER KASUS & IDENTITAS DOKUMEN ═══ -->
+<div class="doc-card p-6 mb-5 fade-in">
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <div class="flex items-center gap-2 mb-1">
+        <span class="text-[11px] font-semibold tracking-wider text-forest-subtle uppercase">Tahap 4 dari 4 — Berita Acara &amp; Rekomendasi Akhir</span>
+        <span class="text-slate-300">·</span>
+        <span class="text-[11px] text-ink-muted">Tahun Usulan <?= e($lap['tahun'] ?? date('Y')) ?></span>
+      </div>
+      <h2 class="font-serif text-2xl font-bold text-forest-ink">
+        Berita Acara Rekomendasi Verifikasi
+      </h2>
+      <p class="text-xs text-ink-muted mt-1 flex flex-wrap items-center gap-3">
+        <span><b>Kelompok Tani:</b> <?= e($k['nama_kth']) ?></span>
+        <span class="text-slate-300">·</span>
+        <span><b>Nomor SK:</b> <?= e($k['nomor_sk'] ?: 'Belum tercatat') ?></span>
+        <span class="text-slate-300">·</span>
+        <span><b>Wilayah:</b> <?= e($k['desa'] ?: '-') ?>, <?= e($k['kecamatan'] ?: '-') ?></span>
+      </p>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2">
+      <a href="hasil.php?kth_id=<?= $kthId ?>" class="btn-secondary px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium">
+        <svg class="w-3.5 h-3.5 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+        Kembali ke Uji Spasial
+      </a>
+      <a href="export.php?kth_id=<?= $kthId ?>" class="btn-secondary px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-subtle hover:text-forest-dark border-cadastral">
+        <svg class="w-3.5 h-3.5 text-forest-subtle" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Ekspor Excel Rekap
+      </a>
+      <a href="cetak_peta.php?kth_id=<?= $kthId ?>" target="_blank" class="btn-secondary px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-subtle hover:text-forest-dark">
+        <svg class="w-3.5 h-3.5 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+        Cetak Peta Lampiran
+      </a>
+    </div>
+  </div>
 </div>
 
-<!-- ═══ Rekomendasi Besar + Statistik ═══ -->
-<div class="grid md:grid-cols-3 gap-5 mb-5 max-w-5xl fade-in fade-in-delay-1">
-  <!-- Rekomendasi utama -->
-  <div class="md:col-span-1 <?= $rekomFinal === 'Dapat Ditindaklanjuti' ? 'bg-gradient-to-br from-emerald-500 to-teal-700' : 'bg-gradient-to-br from-amber-500 to-orange-700' ?> rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
-    <div class="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/10 -translate-x-6 -translate-y-6"></div>
-    <div class="relative z-10">
-      <div class="text-xs font-bold uppercase tracking-wider text-white/70 mb-2">Rekomendasi</div>
-      <div class="text-2xl font-extrabold leading-tight mb-3"><?= e($rekomFinal) ?></div>
-      <div class="text-xs text-white/80 leading-relaxed">
-        <?php if ($rekomFinal === 'Dapat Ditindaklanjuti'): ?>
-          Seluruh petani sesuai SK dan titik koordinat berada dalam peta areal PS.
+<!-- ═══ REKOMENDASI BERITA ACARA & NERACA VERIFIKASI ═══ -->
+<div class="grid md:grid-cols-12 gap-5 mb-5 fade-in">
+  <!-- Blok Keputusan / Rekomendasi Administratif -->
+  <div class="md:col-span-5 doc-card p-6 flex flex-col justify-between" style="border-left: 4px solid <?= $isSesuaiSemua ? '#1D5C3A' : '#9E2A2B' ?>;">
+    <div>
+      <div class="flex items-center justify-between gap-2 mb-3">
+        <span class="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Kesimpulan Verifikasi Lapangan</span>
+        <span class="doc-badge <?= $isSesuaiSemua ? 'badge-sk-sesuai' : 'badge-sk-belum' ?>">
+          <?= $isSesuaiSemua ? 'Disetujui' : 'Catatan Khusus' ?>
+        </span>
+      </div>
+      
+      <div class="font-serif text-2xl font-bold <?= $isSesuaiSemua ? 'text-status-sesuai' : 'text-status-revisi' ?> leading-tight mb-2">
+        <?= e($rekomFinal) ?>
+      </div>
+
+      <p class="text-xs text-forest-ink leading-relaxed mt-2">
+        <?php if ($isSesuaiSemua): ?>
+          Berdasarkan penelaahan komparatif, seluruh <b><?= $hitung['total'] ?> pemohon</b> tercantum dalam Keputusan Persetujuan Pengelolaan Perhutanan Sosial dan seluruh titik koordinat garapan berada di dalam deliniasi peta areal izin.
         <?php else: ?>
-          Terdapat ketidaksesuaian pada data SK atau koordinat yang perlu ditinjau kembali.
+          Ditemukan ketidaksesuaian yuridis atau spasial: 
+          <?php if ($hitung['tidak'] > 0): ?><b><?= $hitung['tidak'] ?> nama belum tercantum dalam SK</b><?php endif; ?>
+          <?php if ($hitung['tidak'] > 0 && $hitung['luar'] > 0): ?> dan <?php endif; ?>
+          <?php if ($hitung['luar'] > 0): ?><b><?= $hitung['luar'] ?> koordinat berada di luar peta areal izin</b><?php endif; ?>. Perlu dilakukan verifikasi lapangan atau revisi dokumen sebelum penerbitan alokasi.
         <?php endif; ?>
-      </div>
+      </p>
+    </div>
+
+    <div class="mt-6 pt-4 border-t border-cadastral flex items-center justify-between text-[11px] text-ink-muted">
+      <span>Status Sistem: <b><?= e($rekomAuto) ?></b></span>
+      <span><?= date('d M Y') ?></span>
     </div>
   </div>
 
-  <!-- Ringkasan statistik -->
-  <div class="md:col-span-2 glass-card rounded-2xl p-5">
-    <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">Ringkasan Verifikasi</div>
+  <!-- Neraca Ringkasan Verifikasi (Cadastral Audit Ledger) -->
+  <div class="md:col-span-7 doc-card p-6">
+    <div class="flex items-center justify-between mb-4 pb-2 border-b border-cadastral">
+      <h3 class="font-serif font-bold text-base text-forest-ink">Neraca Kesesuaian Yuridis &amp; Spasial</h3>
+      <span class="text-xs font-mono font-semibold text-ink-muted tabular-nums">Total: <?= $hitung['total'] ?> Pemohon</span>
+    </div>
+
     <div class="space-y-4">
-      <!-- SK -->
+      <!-- Uji Kesesuaian SK -->
       <div>
         <div class="flex justify-between text-xs mb-1.5">
-          <span class="font-semibold text-slate-700">Kesesuaian SK</span>
-          <span class="font-bold"><?= $hitung['sesuai'] ?> / <?= $hitung['total'] ?> <span class="text-emerald-600">(<?= $pctSK ?>%)</span></span>
+          <span class="font-semibold text-forest-ink">1. Kesesuaian Nama &amp; NIK dengan SK PS</span>
+          <span class="font-mono font-bold text-forest-ink tabular-nums">
+            <?= $hitung['sesuai'] ?> / <?= $hitung['total'] ?> 
+            <span class="text-status-sesuai font-normal">(<?= $pctSK ?>%)</span>
+          </span>
         </div>
-        <div class="h-3 bg-slate-100 rounded-full overflow-hidden flex">
-          <div class="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full smooth-all" style="width:<?= $pctSK ?>%"></div>
+        <div class="h-2.5 bg-paper-tint border border-cadastral rounded-sm overflow-hidden flex">
+          <div class="bg-status-sesuai h-full" style="width: <?= $pctSK ?>%"></div>
           <?php if ($hitung['tidak'] > 0): ?>
-          <div class="h-full bg-gradient-to-r from-red-400 to-red-500 rounded-r-full" style="width:<?= 100 - $pctSK ?>%"></div>
+            <div class="bg-status-revisi h-full" style="width: <?= 100 - $pctSK ?>%"></div>
           <?php endif; ?>
         </div>
-        <div class="flex justify-between text-[10px] text-slate-400 mt-1">
-          <span><?= $hitung['sesuai'] ?> sesuai SK PS</span>
-          <span><?= $hitung['tidak'] ?> belum sesuai</span>
+        <div class="flex justify-between text-[11px] text-ink-muted mt-1">
+          <span><span class="font-bold text-status-sesuai"><?= $hitung['sesuai'] ?></span> nama sesuai daftar lampiran SK</span>
+          <span><span class="font-bold text-status-revisi"><?= $hitung['tidak'] ?></span> belum ditemukan / beda identitas</span>
         </div>
       </div>
-      <!-- Koordinat -->
+
+      <!-- Uji Koordinat Spasial -->
       <div>
         <div class="flex justify-between text-xs mb-1.5">
-          <span class="font-semibold text-slate-700">Posisi Koordinat</span>
-          <span class="font-bold"><?= $hitung['dalam'] ?> / <?= $hitung['total'] ?> <span class="text-sky-600">(<?= $pctPeta ?>%)</span></span>
+          <span class="font-semibold text-forest-ink">2. Posisi Koordinat Garapan Petani</span>
+          <span class="font-mono font-bold text-forest-ink tabular-nums">
+            <?= $hitung['dalam'] ?> / <?= $hitung['total'] ?> 
+            <span class="text-forest-subtle font-normal">(<?= $pctPeta ?>%)</span>
+          </span>
         </div>
-        <div class="h-3 bg-slate-100 rounded-full overflow-hidden flex">
-          <div class="h-full bg-gradient-to-r from-sky-400 to-sky-600 rounded-full smooth-all" style="width:<?= $pctPeta ?>%"></div>
+        <div class="h-2.5 bg-paper-tint border border-cadastral rounded-sm overflow-hidden flex">
+          <div class="bg-forest-subtle h-full" style="width: <?= $pctPeta ?>%"></div>
           <?php if ($hitung['luar'] > 0): ?>
-          <div class="h-full bg-gradient-to-r from-orange-400 to-orange-500 rounded-r-full" style="width:<?= 100 - $pctPeta ?>%"></div>
+            <div class="bg-status-luar h-full" style="width: <?= 100 - $pctPeta ?>%"></div>
           <?php endif; ?>
         </div>
-        <div class="flex justify-between text-[10px] text-slate-400 mt-1">
-          <span><?= $hitung['dalam'] ?> dalam peta PS</span>
-          <span><?= $hitung['luar'] ?> luar peta</span>
+        <div class="flex justify-between text-[11px] text-ink-muted mt-1">
+          <span><span class="font-bold text-forest-subtle"><?= $hitung['dalam'] ?></span> titik di dalam poligon areal izin PS</span>
+          <span><span class="font-bold text-status-luar"><?= $hitung['luar'] ?></span> titik di luar deliniasi peta</span>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ═══ Form Laporan ═══ -->
-<div class="glass-card rounded-2xl p-6 mb-5 max-w-5xl fade-in fade-in-delay-2">
+<!-- ═══ FORMULIR RESMI BERITA ACARA ═══ -->
+<div class="doc-card p-6 mb-5 fade-in">
+  <div class="pb-3 border-b border-cadastral mb-5">
+    <h3 class="font-serif font-bold text-lg text-forest-ink">Formulir Pengesahan &amp; Redaksi Laporan</h3>
+    <p class="text-xs text-ink-muted">
+      Tinjau redaksi narasi resmi sebelum dicetak atau diekspor sebagai lampiran Berita Acara Verifikasi Pupuk Bersubsidi.
+    </p>
+  </div>
+
   <form action="proses_laporan.php" method="post" class="space-y-5">
     <input type="hidden" name="kth_id" value="<?= $kthId ?>">
     
     <div class="grid md:grid-cols-3 gap-4">
       <div>
-        <label class="block text-xs font-bold text-slate-600 mb-1.5">Tahun</label>
-        <input name="tahun" value="<?= e($lap['tahun'] ?? '') ?>" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm bg-white focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none smooth-all">
+        <label class="block text-xs font-semibold text-forest-ink mb-1.5">Tahun Anggaran Usulan</label>
+        <input type="text" name="tahun" value="<?= e($lap['tahun'] ?? date('Y')) ?>" class="w-full border border-cadastral rounded px-3 py-2 text-xs bg-white text-forest-ink focus:border-forest-dark outline-none font-mono">
+        <p class="text-[11px] text-ink-muted mt-1">Tahun alokasi pupuk bersubsidi.</p>
       </div>
+
       <div>
-        <label class="block text-xs font-bold text-slate-600 mb-1.5">Rekomendasi Akhir</label>
-        <select name="rekomendasi" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm bg-white focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none smooth-all font-semibold">
+        <label class="block text-xs font-semibold text-forest-ink mb-1.5">Penetapan Rekomendasi Petugas</label>
+        <select name="rekomendasi" class="w-full border border-cadastral rounded px-3 py-2 text-xs bg-white text-forest-ink focus:border-forest-dark outline-none font-semibold">
           <?php foreach (['Dapat Ditindaklanjuti', 'Perlu Revisi'] as $op): ?>
-            <option <?= (($lap['rekomendasi'] ?? $rekomAuto) === $op) ? 'selected' : '' ?>><?= $op ?></option>
+            <option value="<?= $op ?>" <?= (($lap['rekomendasi'] ?? $rekomAuto) === $op) ? 'selected' : '' ?>><?= $op ?></option>
           <?php endforeach; ?>
         </select>
-        <p class="text-[10px] text-slate-400 mt-1">Rekomendasi otomatis: <b><?= e($rekomAuto) ?></b> — bisa di-override.</p>
+        <p class="text-[11px] text-ink-muted mt-1">Sistem menyarankan: <b><?= e($rekomAuto) ?></b>.</p>
       </div>
-      <div class="flex items-end">
-        <div class="text-xs text-slate-500 bg-slate-50 rounded-xl px-4 py-3 w-full border border-slate-200/60">
-          <div class="font-semibold text-slate-600 mb-1">Angka Verifikasi</div>
-          Total <?= $hitung['total'] ?> · Sesuai <?= $hitung['sesuai'] ?> · Belum <?= $hitung['tidak'] ?> · Dalam <?= $hitung['dalam'] ?> · Luar <?= $hitung['luar'] ?>
+
+      <div>
+        <label class="block text-xs font-semibold text-forest-ink mb-1.5">Ringkasan Angka Audit</label>
+        <div class="border border-cadastral bg-paper-tint rounded px-3 py-2 text-[11px] text-ink-muted font-mono leading-relaxed">
+          Total: <?= $hitung['total'] ?> | SK: <?= $hitung['sesuai'] ?> ok, <?= $hitung['tidak'] ?> beda | Peta: <?= $hitung['dalam'] ?> dlm, <?= $hitung['luar'] ?> luar
         </div>
+        <p class="text-[11px] text-ink-muted mt-1">Dihitung otomatis dari basis data.</p>
       </div>
     </div>
 
-    <div x-data="{ len: <?= strlen($lap['narasi'] ?? '') ?> }">
-      <label class="block text-xs font-bold text-slate-600 mb-1.5">Narasi Ringkasan</label>
-      <textarea name="narasi" rows="6" x-on:input="len = $event.target.value.length"
-        class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm bg-white focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none smooth-all leading-relaxed"><?= e($lap['narasi'] ?? '') ?></textarea>
-      <div class="text-right text-[10px] text-slate-400 mt-1" x-text="len + ' karakter'"></div>
+    <div x-data="{ len: <?= mb_strlen($lap['narasi'] ?? '', 'UTF-8') ?> }">
+      <div class="flex items-center justify-between mb-1.5">
+        <label class="block text-xs font-semibold text-forest-ink">Teks Narasi Berita Acara / Rekomendasi</label>
+        <span class="text-[11px] text-ink-muted font-mono" x-text="len + ' karakter'"></span>
+      </div>
+      <textarea name="narasi" rows="7" x-on:input="len = $event.target.value.length"
+        class="w-full border border-cadastral rounded px-3.5 py-2.5 text-xs bg-white text-forest-ink focus:border-forest-dark outline-none leading-relaxed font-sans"><?= e($lap['narasi'] ?? '') ?></textarea>
+      <p class="text-[11px] text-ink-muted mt-1">
+        Narasi ini akan tampil pada lembar cetak Berita Acara dan rekapan hasil audit Dinas Kehutanan.
+      </p>
     </div>
 
-    <div class="flex flex-wrap gap-3 pt-1">
-      <button class="btn-primary px-5 py-2.5 rounded-xl text-sm inline-flex items-center gap-2 shadow-lg">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-        Simpan Laporan
-      </button>
-      <a href="export.php?kth_id=<?= $kthId ?>" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-sky-500 to-sky-700 hover:from-sky-600 hover:to-sky-800 shadow-lg smooth-all">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-        Export Excel
-      </a>
-      <a href="cetak_peta.php?kth_id=<?= $kthId ?>" target="_blank" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-teal-600 to-emerald-700 hover:from-teal-700 hover:to-emerald-800 shadow-lg smooth-all">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-        Cetak Peta
-      </a>
-      <a href="hasil.php?kth_id=<?= $kthId ?>" class="btn-secondary px-4 py-2.5 rounded-xl text-sm inline-flex items-center gap-2">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-        Kembali ke Hasil
-      </a>
+    <div class="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-cadastral">
+      <div class="flex flex-wrap items-center gap-2">
+        <button type="submit" class="btn-primary px-5 py-2 text-xs inline-flex items-center gap-1.5 font-semibold">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          Simpan Laporan &amp; Berita Acara
+        </button>
+        <a href="export.php?kth_id=<?= $kthId ?>" class="btn-secondary px-4 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-subtle hover:text-forest-dark">
+          <svg class="w-3.5 h-3.5 text-forest-subtle" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          Unduh File Excel
+        </a>
+        <a href="cetak_peta.php?kth_id=<?= $kthId ?>" target="_blank" class="btn-secondary px-4 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-subtle hover:text-forest-dark">
+          <svg class="w-3.5 h-3.5 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+          Cetak Peta Spasial
+        </a>
+      </div>
+
+      <div>
+        <a href="index.php" class="btn-secondary px-4 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-ink-muted">
+          Kembali ke Buku Register
+        </a>
+      </div>
     </div>
   </form>
 </div>
 
-<!-- ═══ Template Narasi ═══ -->
-<div class="glass-card rounded-2xl p-5 max-w-5xl text-sm fade-in fade-in-delay-3" x-data="{ open: false }">
+<!-- ═══ REFERENSI TEMPLATE RESMI ═══ -->
+<div class="doc-card p-5 text-xs fade-in" x-data="{ open: false }">
   <button type="button" @click="open = !open" class="w-full flex items-center justify-between text-left">
-    <h3 class="font-bold text-slate-600 flex items-center gap-2">
-      <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-      Template Narasi (placeholder otomatis)
-    </h3>
-    <svg class="w-5 h-5 text-slate-400 smooth-all" :class="open && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+    <div class="flex items-center gap-2">
+      <svg class="w-4 h-4 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <span class="font-serif font-bold text-forest-ink">Format Standar Narasi Berita Acara Dinas</span>
+    </div>
+    <span class="text-[11px] text-forest-subtle font-medium" x-text="open ? 'Tutup Panduan' : 'Lihat Standar Redaksi'"></span>
   </button>
-  <div x-show="open" x-transition class="mt-3">
-    <code class="block bg-slate-50 border border-slate-200 rounded-xl p-4 whitespace-pre-wrap text-xs text-slate-600 leading-relaxed">Berdasarkan hasil verifikasi data usulan pupuk subsidi tahun [TAHUN] terdapat sebanyak [TOTAL] petani. Dari hasil telaah diperoleh data bahwa sejumlah [JUMLAH_SESUAI] petani sudah sesuai dengan SK [NOMOR_SK], terdapat [JUMLAH_TIDAK_SESUAI] petani yang belum masuk ke dalam SK tersebut. Titik koordinat petani yang mengusulkan pupuk, sejumlah [JUMLAH_DALAM_PETA] berada dalam peta areal [NAMA_KTH] dan [JUMLAH_LUAR_PETA] berada di luar peta.</code>
-    <form action="proses_laporan.php" method="post" class="mt-2">
+  <div x-show="open" x-transition class="mt-3 pt-3 border-t border-cadastral">
+    <p class="text-ink-muted mb-2">Redaksi default yang disusun oleh sistem menggunakan format klausul berikut:</p>
+    <div class="bg-paper-tint border border-cadastral rounded p-3 font-mono text-[11px] text-forest-ink whitespace-pre-wrap leading-relaxed">Berdasarkan hasil verifikasi data usulan pupuk subsidi tahun [TAHUN] terdapat sebanyak [TOTAL] petani. Dari hasil telaah diperoleh data bahwa sejumlah [JUMLAH_SESUAI] petani sudah sesuai dengan SK [NOMOR_SK], terdapat [JUMLAH_TIDAK_SESUAI] petani yang belum masuk ke dalam SK tersebut. Titik koordinat petani yang mengusulkan pupuk, sejumlah [JUMLAH_DALAM_PETA] berada dalam peta areal [NAMA_KTH] dan [JUMLAH_LUAR_PETA] berada di luar peta.</div>
+    <form action="proses_laporan.php" method="post" class="mt-3">
       <input type="hidden" name="kth_id" value="<?= $kthId ?>">
       <input type="hidden" name="reset_template" value="1">
-      <button class="text-emerald-700 hover:text-emerald-900 text-xs font-semibold smooth-all inline-flex items-center gap-1">
+      <button type="submit" class="text-forest-subtle hover:text-forest-dark text-[11px] font-semibold inline-flex items-center gap-1.5">
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-        Kembalikan narasi ke template otomatis
+        Reset teks ke redaksi standar dinas
       </button>
     </form>
   </div>
 </div>
+
 <?php layout_foot(); ?>
