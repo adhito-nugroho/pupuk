@@ -246,18 +246,6 @@ tailwind.config = {
 function layout_foot(): void {
     ?>
 </main>
-<footer class="border-t border-kadaster-border bg-[#F3EFE7] mt-auto">
-  <div class="max-w-7xl mx-auto px-5 py-4 flex flex-wrap items-center justify-between text-xs text-ink-muted gap-2">
-    <div>
-      <span class="font-semibold text-ink">Cabang Dinas Kehutanan Wilayah Bojonegoro</span>
-      <span class="mx-2 text-kadaster-border">|</span>
-      <span>Aplikasi Verifikasi Alokasi Pupuk Bersubsidi Sektor Kehutanan</span>
-    </div>
-    <div class="font-mono text-[11px] text-ink-faint">
-      PHP 8 · MySQL · GIS Kadaster
-    </div>
-  </div>
-</footer>
 </body>
 </html>
     <?php
