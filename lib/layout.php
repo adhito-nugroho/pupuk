@@ -178,12 +178,24 @@ tailwind.config = {
 <header class="bg-forest-900 text-white border-b border-[#2A4839] relative">
   <div class="max-w-7xl mx-auto px-5 py-3.5 flex flex-wrap items-center justify-between gap-4">
     <div class="flex items-center gap-3.5">
-      <!-- Lambang Dinas Kehutanan / Cadastre Emblem -->
-      <div class="w-9 h-9 border border-forest-700/80 bg-[#132A20] flex items-center justify-center flex-shrink-0">
-        <svg class="w-5 h-5 text-emerald-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 2L3 19h18L12 2z"/>
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 7l-5 10h10L12 7z"/>
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 17v5"/>
+      <!-- Lambang Dinas Kehutanan Resmi / Institutional Shield -->
+      <div class="w-10 h-10 rounded bg-[#0F261B] border border-emerald-500/30 flex items-center justify-center flex-shrink-0 shadow-sm">
+        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Perisai Kedinasan -->
+          <path d="M12 2.2L4.5 5.2V11.2C4.5 16.2 7.7 20.8 12 21.8C16.3 20.8 19.5 16.2 19.5 11.2V5.2L12 2.2Z" 
+                fill="#143423" stroke="#52B788" stroke-width="1.3" stroke-linejoin="round"/>
+          <!-- Bintang Pengayom / Bintang Kehormatan -->
+          <path d="M12 4.5L12.5 5.8H13.8L12.7 6.6L13.1 7.9L12 7.1L10.9 7.9L11.3 6.6L10.2 5.8H11.5L12 4.5Z" 
+                fill="#F3C64F"/>
+          <!-- Tajuk Daun Pohon Jati/Hutan Rindang -->
+          <path d="M12 8C10.1 8 8.8 9.3 8.8 10.9C8.8 11.4 9 11.8 9.2 12.1C8.3 12.4 7.8 13.2 7.8 14.1C7.8 15.3 8.8 16.2 10 16.2C10.3 16.2 10.6 16.1 10.8 16C11.1 16.8 11.5 17.2 12 17.2C12.5 17.2 12.9 16.8 13.2 16C13.4 16.1 13.7 16.2 14 16.2C15.2 16.2 16.2 15.3 16.2 14.1C16.2 13.2 15.7 12.4 14.8 12.1C15 11.8 15.2 11.4 15.2 10.9C15.2 9.3 13.9 8 12 8Z" 
+                fill="#52B788"/>
+          <!-- Batang Pohon Jati & Percabangan -->
+          <path d="M12 12.8V18.2M10.2 18.2H13.8M12 15.2L10.5 13.8M12 14.5L13.5 13.5" 
+                stroke="#F3C64F" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- Untaian Padi & Kapas Kemakmuran Petani Hutan -->
+          <path d="M6.2 10.5C5.8 12.2 6.1 14.5 7.2 16.5M17.8 10.5C18.2 12.2 17.9 14.5 16.8 16.5" 
+                stroke="#F3C64F" stroke-width="0.9" stroke-linecap="round" opacity="0.85"/>
         </svg>
       </div>
       <div>
