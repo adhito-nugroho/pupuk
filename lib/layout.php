@@ -24,17 +24,25 @@ tailwind.config = {
           700: '#32634E',
           100: '#E4ECE7',
           50:  '#F2F6F4',
+          // Aliases untuk konsistensi markup
+          dark: '#1B382B',
+          subtle: '#264E3D',
+          ink: '#142219',
         },
         paper: {
           DEFAULT: '#F9F7F1', // Base netral kertas register
           card: '#FFFFFF',
           muted: '#F3EFE7',
+          tint: '#F6F2E9', // Alias paper-tint
         },
         kadaster: {
           border: '#DDD5C7', // Hairline rule peta kadaster
           dark: '#524333',
           brown: '#7D664E',
           light: '#F6F2E9',
+        },
+        cadastral: {
+          DEFAULT: '#DDD5C7', // Alias border-cadastral & bg-cadastral
         },
         ink: {
           DEFAULT: '#142219', // Teks utama nyaris hitam kehijauan
@@ -51,6 +59,11 @@ tailwind.config = {
           warn: '#B45309',
           warnBg: '#FEF9EE',
           warnBorder: '#F6DBA5',
+        },
+        status: {
+          sesuai: '#1D5C3A', // Alias audit.valid
+          revisi: '#9E2A2B', // Alias audit.revisi
+          luar: '#B45309',   // Alias audit.warn
         }
       },
       fontFamily: {
@@ -82,24 +95,24 @@ tailwind.config = {
     box-shadow: 0 1px 3px rgba(27, 56, 43, 0.04);
   }
   /* Tombol Khusus Alat Kerja */
-  .btn-forest {
+  .btn-forest, .btn-primary {
     background-color: #1B382B;
     color: #FFFFFF;
     border: 1px solid #0F1E16;
     font-weight: 600;
     transition: background-color 0.15s ease;
   }
-  .btn-forest:hover {
+  .btn-forest:hover, .btn-primary:hover {
     background-color: #264E3D;
   }
-  .btn-kadaster {
+  .btn-kadaster, .btn-secondary {
     background-color: #FFFFFF;
     color: #524333;
     border: 1px solid #DDD5C7;
     font-weight: 600;
     transition: all 0.15s ease;
   }
-  .btn-kadaster:hover {
+  .btn-kadaster:hover, .btn-secondary:hover {
     background-color: #F9F7F1;
     border-color: #7D664E;
     color: #142219;
@@ -113,6 +126,36 @@ tailwind.config = {
   }
   .btn-revisi:hover {
     background-color: #B53234;
+  }
+  /* Badge Dokumen Resmi */
+  .doc-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.2rem 0.55rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    border-radius: 2px;
+  }
+  .badge-sk-sesuai {
+    background-color: #F0F7F2;
+    color: #1D5C3A;
+    border: 1px solid #B2D8C0;
+    border-left: 3px solid #1D5C3A;
+  }
+  .badge-sk-belum {
+    background-color: #FDF2F2;
+    color: #9E2A2B;
+    border: 1px solid #F2B8B8;
+    border-left: 3px solid #9E2A2B;
+  }
+  /* Animasi Transisi Halus */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(2px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .fade-in {
+    animation: fadeIn 0.2s ease-out forwards;
   }
   /* Garis Baris Tabel */
   .hairline-row {
