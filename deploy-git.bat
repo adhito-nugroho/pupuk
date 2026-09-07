@@ -15,7 +15,7 @@ set "REPO_URL=https://github.com/adhito-nugroho/pupuk.git"
 set "REMOTE_GIT=C:\laragon\bin\git\cmd\git.exe"
 
 echo ======================================================
-echo VERIFIKASI PUPUK — DEPLOY GIT (PUSH & SERVER PULL)
+echo VERIFIKASI PUPUK -- DEPLOY GIT (PUSH DAN SERVER PULL)
 echo ======================================================
 
 :: 1. Commit (jika ada perubahan) lalu Push ke remote
@@ -40,7 +40,7 @@ if "!NEED_COMMIT!"=="0" (
     )
 )
 
-git push -u origin %BRANCH%
+git push origin %BRANCH%
 if errorlevel 1 (
     echo Gagal melakukan git push dari laptop!
     pause
@@ -53,11 +53,11 @@ echo [2/2] Memperbarui kode di server via SSH...
 echo *(Jika diminta password SSH, masukkan password akun server)*
 echo.
 
-ssh -p %SERVER_PORT% %SERVER_USER%@%SERVER_IP% "if exist %REMOTE_DIR%\.git (cd /d %REMOTE_DIR% && %REMOTE_GIT% pull origin %BRANCH%) else (if not exist C:\laragon\www\website-cdk mkdir C:\laragon\www\website-cdk && %REMOTE_GIT% clone %REPO_URL% %REMOTE_DIR%)"
+ssh -p %SERVER_PORT% %SERVER_USER%@%SERVER_IP% "if not exist C:\laragon\www\website-cdk mkdir C:\laragon\www\website-cdk & if exist %REMOTE_DIR%\.git (echo [SERVER] Direktori repo ditemukan. Menjalankan git pull... && cd /d %REMOTE_DIR% && %REMOTE_GIT% pull origin %BRANCH%) else (echo [SERVER] Mengkloning repo baru ke %REMOTE_DIR%... && %REMOTE_GIT% clone %REPO_URL% %REMOTE_DIR%)"
 
 if errorlevel 1 (
     echo.
-    echo Proses update di server gagal. Pastikan tunnel Cloudflare dan folder server sesuai.
+    echo Proses update di server gagal.
     pause
     exit /b 1
 )

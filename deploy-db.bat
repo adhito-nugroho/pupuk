@@ -18,7 +18,7 @@ set DUMP_FILE=db_export_pupuk_temp.sql
 set "REMOTE_MYSQL=C:\laragon\bin\mysql\mysql-8.0.30-winx64\bin\mysql.exe"
 
 echo ======================================================
-echo VERIFIKASI PUPUK — DEPLOY DATABASE MYSQL KE SERVER
+echo VERIFIKASI PUPUK -- DEPLOY DATABASE MYSQL KE SERVER
 echo ======================================================
 
 :: 1. Export database dari MySQL Lokal
@@ -48,10 +48,10 @@ for %%A in (%DUMP_FILE%) do if %%~zA lss 100 (
 echo Export database lokal berhasil. Ukuran: 
 for %%A in (%DUMP_FILE%) do echo   %%~zA bytes
 
-:: 2. Upload file SQL ke Server via SCP
+:: 2. Upload file SQL ke Server via SCP (ke home folder user adit)
 echo.
 echo [2/3] Mengirim file dump SQL ke server...
-scp -P %SERVER_PORT% %DUMP_FILE% %SERVER_USER%@%SERVER_IP%:C:/Windows/Temp/%DUMP_FILE%
+scp -P %SERVER_PORT% %DUMP_FILE% %SERVER_USER%@%SERVER_IP%:%DUMP_FILE%
 
 if errorlevel 1 (
     echo Gagal mengunggah file SQL ke server! Pastikan tunnel SSH aktif di port %SERVER_PORT%.
@@ -64,7 +64,11 @@ if errorlevel 1 (
 echo.
 echo [3/3] Meng-import database di MySQL Server...
 
-ssh -p %SERVER_PORT% %SERVER_USER%@%SERVER_IP% "%REMOTE_MYSQL% -u %DB_USER_REMOTE% < C:\Windows\Temp\%DUMP_FILE% && del C:\Windows\Temp\%DUMP_FILE%"
+if "%DB_PASS_REMOTE%"=="" (
+    ssh -p %SERVER_PORT% %SERVER_USER%@%SERVER_IP% "%REMOTE_MYSQL% -u %DB_USER_REMOTE% < %DUMP_FILE% & del %DUMP_FILE%"
+) else (
+    ssh -p %SERVER_PORT% %SERVER_USER%@%SERVER_IP% "%REMOTE_MYSQL% -u %DB_USER_REMOTE% -p%DB_PASS_REMOTE% < %DUMP_FILE% & del %DUMP_FILE%"
+)
 
 if errorlevel 1 (
     echo.
