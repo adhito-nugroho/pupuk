@@ -1,0 +1,18 @@
+# PyInstaller build & distribution
+dist/
+build/
+*.spec
+__pycache__/
+*.py[cod]
+
+# Uploads and temporary files
+uploads/*
+!uploads/.gitkeep
+
+# Temporary database dump files
+db_export*.sql
+*.sqlite
+
+# Archives
+*.zip
+*.rar

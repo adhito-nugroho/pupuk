@@ -1,0 +1,10 @@
+{
+    "name": "dishut/verifikasi-pupuk",
+    "description": "Verifikasi data usulan pupuk bersubsidi bagi petani hutan (KTH/LMDH)",
+    "require": {
+        "php": ">=8.1",
+        "smalot/pdfparser": "^2.9",
+        "gasparesganga/php-shapefile": "^3.4",
+        "phpoffice/phpspreadsheet": "^2.1"
+    }
+}
