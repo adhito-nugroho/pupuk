@@ -246,11 +246,11 @@ tailwind.config = {
 function layout_foot(): void {
     ?>
 </main>
-<footer class="border-t border-kadaster-border bg-[#F3EFE7] mt-auto">
-  <div class="max-w-7xl mx-auto px-5 py-4 flex flex-wrap items-center justify-between text-xs text-ink-muted gap-2">
+<footer class="bg-forest-900 text-white border-t border-[#2A4839] mt-auto">
+  <div class="max-w-7xl mx-auto px-5 py-3.5 flex flex-wrap items-center justify-between text-xs text-emerald-100/75 gap-2">
     <div>
-      <span class="font-semibold text-ink">Cabang Dinas Kehutanan Wilayah Bojonegoro</span>
-      <span class="mx-2 text-kadaster-border">|</span>
+      <span class="font-semibold text-white">Cabang Dinas Kehutanan Wilayah Bojonegoro</span>
+      <span class="mx-2 text-emerald-500/40">|</span>
       <span>Aplikasi Verifikasi Alokasi Pupuk Bersubsidi Sektor Kehutanan</span>
     </div>
   </div>
