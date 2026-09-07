@@ -27,6 +27,12 @@ $pctSK = $hitung['total'] > 0 ? round($hitung['sesuai'] / $hitung['total'] * 100
 $pctPeta = $hitung['total'] > 0 ? round($hitung['dalam'] / $hitung['total'] * 100) : 0;
 $jmlMasalah = $hitung['tidak'] + $hitung['luar'];
 
+$qLoc = $pdo->prepare('SELECT desa, kecamatan FROM usulan_pupuk WHERE kth_id = ? AND (desa IS NOT NULL AND desa != "") LIMIT 1');
+$qLoc->execute([$kthId]);
+$loc = $qLoc->fetch() ?: [];
+$namaDesa = $loc['desa'] ?? '';
+$namaKec = $loc['kecamatan'] ?? '';
+
 layout_head('Hasil Verifikasi Spasial & Yuridis — ' . $k['nama_kth']);
 
 // Leaflet CSS
@@ -62,10 +68,18 @@ wizard(3);
       </h2>
       <p class="text-xs text-ink-muted mt-1 flex flex-wrap items-center gap-3">
         <span><b>No. SK:</b> <?= e($k['nomor_sk'] ?: 'Belum tercatat') ?></span>
+        <?php if ($namaDesa || $namaKec): ?>
         <span class="text-slate-300">·</span>
-        <span><b>Desa/Kec.:</b> <?= e($k['desa'] ?: '-') ?>, <?= e($k['kecamatan'] ?: '-') ?></span>
+        <span><b>Desa/Kec.:</b> <?= e(implode(', ', array_filter([$namaDesa, $namaKec]))) ?></span>
+        <?php endif; ?>
+        <?php if (!empty($k['nama_kph'])): ?>
         <span class="text-slate-300">·</span>
-        <span><b>Pemegang Izin:</b> <?= e($k['nama_pengurus'] ?: '-') ?></span>
+        <span><b>KPH:</b> <?= e($k['nama_kph']) ?></span>
+        <?php endif; ?>
+        <?php if (!empty($k['luas_areal'])): ?>
+        <span class="text-slate-300">·</span>
+        <span><b>Luas SK:</b> <?= e(number_format((float)$k['luas_areal'], 2, ',', '.')) ?> Ha</span>
+        <?php endif; ?>
       </p>
     </div>
 

@@ -38,6 +38,11 @@ $pctSK = $hitung['total'] > 0 ? round($hitung['sesuai'] / $hitung['total'] * 100
 $pctPeta = $hitung['total'] > 0 ? round($hitung['dalam'] / $hitung['total'] * 100) : 0;
 $rekomFinal = $lap['rekomendasi'] ?? $rekomAuto;
 $isSesuaiSemua = ($rekomFinal === 'Dapat Ditindaklanjuti');
+$qLoc = $pdo->prepare('SELECT desa, kecamatan FROM usulan_pupuk WHERE kth_id = ? AND (desa IS NOT NULL AND desa != "") LIMIT 1');
+$qLoc->execute([$kthId]);
+$loc = $qLoc->fetch() ?: [];
+$namaDesa = $loc['desa'] ?? '';
+$namaKec = $loc['kecamatan'] ?? '';
 
 layout_head('Berita Acara Rekomendasi — ' . $k['nama_kth']);
 wizard(4);
@@ -59,8 +64,14 @@ wizard(4);
         <span><b>Kelompok Tani:</b> <?= e($k['nama_kth']) ?></span>
         <span class="text-slate-300">·</span>
         <span><b>Nomor SK:</b> <?= e($k['nomor_sk'] ?: 'Belum tercatat') ?></span>
+        <?php if ($namaDesa || $namaKec): ?>
         <span class="text-slate-300">·</span>
-        <span><b>Wilayah:</b> <?= e($k['desa'] ?: '-') ?>, <?= e($k['kecamatan'] ?: '-') ?></span>
+        <span><b>Wilayah:</b> <?= e(implode(', ', array_filter([$namaDesa, $namaKec]))) ?></span>
+        <?php endif; ?>
+        <?php if (!empty($k['nama_kph'])): ?>
+        <span class="text-slate-300">·</span>
+        <span><b>KPH:</b> <?= e($k['nama_kph']) ?></span>
+        <?php endif; ?>
       </p>
     </div>
 
