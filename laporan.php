@@ -47,6 +47,11 @@ $namaKec  = !empty($loc['kecamatan']) ? $loc['kecamatan'] : (!empty($k['kecamata
 
 layout_head('Berita Acara Rekomendasi — ' . ($k['nama_kth'] ?? ''));
 wizard(4);
+
+// Ambil info BA dari laporan terbaru
+$baFile  = $lap['berkas_ba']   ?? null;
+$baNama  = $lap['nama_file_ba'] ?? null;
+$baTgl   = $lap['tgl_ba']       ?? null;
 ?>
 
 <!-- ═══ HEADER KASUS & IDENTITAS DOKUMEN ═══ -->
@@ -254,6 +259,149 @@ wizard(4);
     </div>
   </form>
 </div>
+
+<!-- ═══ LAMPIRAN BERITA ACARA PERBAIKAN ═══ -->
+<?php if ($hitung['tidak'] > 0): ?>
+<div class="doc-card p-6 mb-5 fade-in" x-data="{
+  uploading: false,
+  namaFile: null,
+  pesanError: null,
+  pesanOk: null,
+  upload(e) {
+    const f = e.target.files[0];
+    if (!f) return;
+    const ext = f.name.split('.').pop().toLowerCase();
+    if (!['doc','docx'].includes(ext)) {
+      this.pesanError = 'Hanya file Word (.doc / .docx) yang diizinkan.';
+      e.target.value = '';
+      return;
+    }
+    if (f.size > 5 * 1024 * 1024) {
+      this.pesanError = 'Ukuran file melebihi 5 MB.';
+      e.target.value = '';
+      return;
+    }
+    this.pesanError = null;
+    this.namaFile = f.name;
+  },
+  submit(e) {
+    const form = e.target;
+    if (!this.namaFile) { this.pesanError = 'Pilih file terlebih dahulu.'; return; }
+    this.uploading = true;
+    this.pesanError = null;
+    this.pesanOk = null;
+    const fd = new FormData(form);
+    fetch('proses_upload_ba.php', { method: 'POST', body: fd })
+      .then(r => r.json())
+      .then(j => {
+        this.uploading = false;
+        if (j.ok) {
+          this.pesanOk = '✅ ' + j.msg;
+          setTimeout(() => location.reload(), 1200);
+        } else {
+          this.pesanError = '⚠️ ' + j.msg;
+        }
+      })
+      .catch(() => {
+        this.uploading = false;
+        this.pesanError = 'Gagal menghubungi server.';
+      });
+  }
+}">
+  <div class="pb-3 border-b border-kadaster-border mb-5">
+    <h3 class="font-serif font-bold text-lg text-ink flex items-center gap-2">
+      <svg class="w-5 h-5 text-audit-revisi" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      Lampiran Berita Acara Perbaikan
+    </h3>
+    <p class="text-xs text-ink-muted mt-1">
+      Upload satu file Berita Acara (<code>.docx</code>) untuk seluruh kasus ini (<b><?= $hitung['tidak'] ?> petani</b> belum tercantum dalam SK).
+      File ini menjadi dokumen pendukung perbaikan nama/NIK secara administratif.
+      <span class="font-semibold text-amber-700">Data usulan asli tidak akan diubah.</span>
+    </p>
+  </div>
+
+  <?php if ($baFile && is_file(__DIR__ . '/' . $baFile)): ?>
+  <!-- File BA sudah ada -->
+  <div class="flex flex-wrap items-center justify-between gap-4 p-4 bg-forest-50 border border-forest-200 rounded-md mb-4">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded bg-blue-600 flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      </div>
+      <div>
+        <div class="font-semibold text-sm text-ink"><?= e($baNama ?? basename($baFile)) ?></div>
+        <div class="text-xs text-ink-muted flex items-center gap-2 mt-0.5">
+          <?php if ($baTgl): ?>
+          <span>Tanggal BA: <b><?= e(date('d M Y', strtotime($baTgl))) ?></b></span>
+          <span class="text-kadaster-border">·</span>
+          <?php endif; ?>
+          <span class="text-audit-valid font-semibold">✓ Terlampir</span>
+        </div>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="<?= e($baFile) ?>" download="<?= e($baNama ?? basename($baFile)) ?>"
+        class="btn-kadaster px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-700 hover:text-forest-900">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Unduh BA
+      </a>
+      <form action="hapus_ba.php" method="post" class="inline m-0"
+        onsubmit="return confirm('Hapus file Berita Acara ini? File tidak dapat dipulihkan.')">
+        <input type="hidden" name="kth_id" value="<?= $kthId ?>">
+        <button type="submit"
+          class="px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-audit-revisi hover:text-red-800 border border-red-200 rounded hover:bg-red-50 transition-colors">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          Hapus
+        </button>
+      </form>
+    </div>
+  </div>
+  <p class="text-[11px] text-ink-muted mb-3">Untuk mengganti file BA, upload file baru di bawah (file lama akan otomatis terhapus).</p>
+  <?php else: ?>
+  <div class="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded mb-4 text-xs text-amber-800">
+    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+    <span>Belum ada file Berita Acara yang diunggah untuk kasus ini.</span>
+  </div>
+  <?php endif; ?>
+
+  <!-- Form Upload -->
+  <form @submit.prevent="submit($event)" enctype="multipart/form-data" class="space-y-4">
+    <input type="hidden" name="kth_id" value="<?= $kthId ?>">
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-xs font-semibold text-ink mb-1.5">File Berita Acara <span class="text-audit-revisi">*</span></label>
+        <div class="relative">
+          <input type="file" name="file_ba" accept=".doc,.docx" @change="upload($event)"
+            class="w-full border border-kadaster-border rounded px-3 py-2 text-xs bg-white text-ink focus:border-forest-900 outline-none
+                   file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold
+                   file:bg-forest-900 file:text-white hover:file:bg-forest-800 cursor-pointer">
+        </div>
+        <p class="text-[11px] text-ink-muted mt-1">Format: .doc / .docx · Maks. 5 MB</p>
+        <p x-show="namaFile" class="text-[11px] text-audit-valid font-semibold mt-1" x-text="'📄 ' + namaFile"></p>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-ink mb-1.5">Tanggal Berita Acara</label>
+        <input type="date" name="tgl_ba" value="<?= e($baTgl ?? date('Y-m-d')) ?>"
+          class="w-full border border-kadaster-border rounded px-3 py-2 text-xs bg-white text-ink focus:border-forest-900 outline-none">
+        <p class="text-[11px] text-ink-muted mt-1">Opsional — tanggal penandatanganan BA perbaikan.</p>
+      </div>
+    </div>
+
+    <div x-show="pesanError" class="text-xs text-audit-revisi font-semibold p-2 bg-red-50 border border-red-200 rounded" x-text="pesanError"></div>
+    <div x-show="pesanOk"    class="text-xs text-audit-valid  font-semibold p-2 bg-green-50 border border-green-200 rounded" x-text="pesanOk"></div>
+
+    <div class="flex items-center gap-3 pt-2 border-t border-kadaster-border">
+      <button type="submit" :disabled="uploading"
+        class="btn-forest px-5 py-2 text-xs inline-flex items-center gap-1.5 font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
+        <svg class="w-3.5 h-3.5" :class="uploading ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+        <span x-text="uploading ? 'Mengunggah…' : 'Upload Berita Acara'"></span>
+      </button>
+      <p class="text-[11px] text-ink-muted">File disimpan ke server dan terhubung ke kasus ini.</p>
+    </div>
+  </form>
+</div>
+<?php endif; ?>
 
 <!-- ═══ REFERENSI TEMPLATE RESMI ═══ -->
 <div class="doc-card p-5 text-xs fade-in" x-data="{ open: false }">

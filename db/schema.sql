@@ -69,6 +69,10 @@ CREATE TABLE IF NOT EXISTS hasil_verifikasi (
     catatan TEXT DEFAULT NULL,
     kemiripan_nama DECIMAL(5,2) DEFAULT NULL,
     nama_mirip_sk VARCHAR(255) DEFAULT NULL,
+    -- Koreksi spasial manual (koordinat asli tetap di usulan_pupuk)
+    koordinat_koreksi_x DOUBLE DEFAULT NULL,
+    koordinat_koreksi_y DOUBLE DEFAULT NULL,
+    dikoreksi_pada TIMESTAMP NULL DEFAULT NULL,
     dibuat_pada TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uq_hasil_usulan (usulan_id),
     FOREIGN KEY (usulan_id) REFERENCES usulan_pupuk(id) ON DELETE CASCADE,
@@ -86,6 +90,10 @@ CREATE TABLE IF NOT EXISTS laporan (
     jumlah_luar_peta INT DEFAULT 0,
     narasi TEXT DEFAULT NULL,
     rekomendasi VARCHAR(64) DEFAULT 'Perlu Revisi',
+    -- Berita Acara perbaikan (satu BA per KTH)
+    berkas_ba VARCHAR(512) DEFAULT NULL,
+    nama_file_ba VARCHAR(255) DEFAULT NULL,
+    tgl_ba DATE DEFAULT NULL,
     dibuat_pada TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (kth_id) REFERENCES kth(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
