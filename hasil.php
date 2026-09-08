@@ -49,11 +49,13 @@ echo '<style>
 .badge-hijau { background-color: #F0F7F2; color: #1D5C3A; border: 1px solid #B2D8C0; font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 2px; display: inline-block; }
 .badge-oranye { background-color: #FEF9EE; color: #B45309; border: 1px solid #F6DBA5; font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 2px; display: inline-block; }
 .badge-abu { background-color: #F3EFE7; color: #57655B; border: 1px solid #DDD5C7; font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 2px; display: inline-block; }
-/* Koreksi koordinat */
-#panel-koreksi { display:none; margin-top:10px; background:#FFFBEB; border:1px solid #F6DBA5; border-radius:6px; padding:14px 16px; font-size:12px; }
-#panel-koreksi.aktif { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
-.marker-draggable { filter: drop-shadow(0 0 6px rgba(180,83,9,0.8)); animation: pulse-oranye 1.2s infinite; }
-@keyframes pulse-oranye { 0%,100%{filter:drop-shadow(0 0 4px rgba(180,83,9,.6))} 50%{filter:drop-shadow(0 0 10px rgba(180,83,9,1))} }
+/* Panel koreksi koordinat */
+#panel-koreksi { display: none; margin-top: 10px; background: #FFFBEB; border: 1px solid #F6DBA5; border-radius: 6px; padding: 14px 16px; }
+#panel-koreksi.aktif { display: block; }
+.input-koord { font-family: monospace; font-size: 12px; border: 1px solid #D97706; border-radius: 4px; padding: 5px 8px; width: 100%; outline: none; background: #fff; }
+.input-koord:focus { border-color: #1D5C3A; box-shadow: 0 0 0 2px rgba(29,92,58,.15); }
+.input-koord.valid { border-color: #1D5C3A; background: #F0FDF4; }
+.input-koord.invalid { border-color: #9E2A2B; background: #FDF2F2; }
 </style>';
 
 wizard(3);
@@ -201,24 +203,50 @@ wizard(3);
 
   <div id="peta-verifikasi"></div>
 
-  <!-- Panel Koreksi Koordinat -->
+  <!-- Panel Koreksi Koordinat (Input Koordinat Baru) -->
   <div id="panel-koreksi">
-    <div class="flex items-center gap-2 text-amber-800 font-semibold text-xs">
-      <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-      <span id="panel-koreksi-nama">Mode Koreksi Aktif</span>
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+      <div class="flex items-center gap-2 text-amber-900 font-semibold text-xs">
+        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+        <span id="panel-koreksi-nama">Koreksi Koordinat</span>
+      </div>
+      <div class="text-[11px] text-amber-700 font-mono bg-amber-100 border border-amber-300 rounded px-2 py-1">
+        Asli: <span id="panel-koreksi-asli">—</span>
+      </div>
     </div>
-    <div class="text-amber-700 text-xs">Seret marker oranye ke posisi yang benar <b>di dalam poligon PS</b>, lalu klik tombol Simpan.</div>
-    <div class="flex items-center gap-2">
-      <span id="panel-koreksi-koord" class="font-mono text-[11px] text-amber-800 bg-amber-100 border border-amber-300 rounded px-2 py-1">—</span>
-      <button id="btn-simpan-koreksi" disabled onclick="simpanKoreksi()"
-        class="px-3 py-1.5 rounded text-xs font-semibold bg-forest-900 text-white hover:bg-forest-800 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity">
-        ✓ Simpan Posisi Baru
+
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div>
+        <label class="block text-[11px] font-semibold text-amber-900 mb-1">Latitude (Y) <span class="font-normal text-ink-muted">misal: -7.292345</span></label>
+        <input id="input-koreksi-lat" type="number" step="any" placeholder="-7.xxxxxx"
+          oninput="validasiKoreksi()"
+          class="font-mono text-xs border border-amber-300 rounded px-3 py-2 w-full outline-none bg-white focus:border-forest-900 focus:ring-1 focus:ring-forest-900">
+      </div>
+      <div>
+        <label class="block text-[11px] font-semibold text-amber-900 mb-1">Longitude (X) <span class="font-normal text-ink-muted">misal: 111.701234</span></label>
+        <input id="input-koreksi-lng" type="number" step="any" placeholder="111.xxxxxx"
+          oninput="validasiKoreksi()"
+          class="font-mono text-xs border border-amber-300 rounded px-3 py-2 w-full outline-none bg-white focus:border-forest-900 focus:ring-1 focus:ring-forest-900">
+      </div>
+    </div>
+
+    <div id="panel-koreksi-pesan" class="text-xs font-medium mb-3 hidden"></div>
+
+    <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-amber-200">
+      <button id="btn-preview-koreksi" onclick="previewKoreksi()"
+        class="px-3 py-1.5 rounded text-xs font-medium border border-amber-400 text-amber-800 hover:bg-amber-100 transition-colors">
+        🗺 Lihat di Peta
       </button>
-      <button onclick="batalKoreksi()" class="px-3 py-1.5 rounded text-xs font-medium text-amber-800 border border-amber-300 hover:bg-amber-100">
+      <button id="btn-simpan-koreksi" disabled onclick="simpanKoreksi()"
+        class="px-4 py-1.5 rounded text-xs font-semibold bg-forest-900 text-white hover:bg-forest-800 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity">
+        ✓ Simpan Koordinat Baru
+      </button>
+      <button onclick="batalKoreksi()"
+        class="px-3 py-1.5 rounded text-xs font-medium text-amber-800 border border-amber-300 hover:bg-amber-100">
         Batal
       </button>
+      <span class="text-[11px] text-ink-muted">Koordinat asli tidak akan diubah.</span>
     </div>
-    <div id="panel-koreksi-pesan" class="text-xs text-audit-revisi font-medium hidden"></div>
   </div>
 
   <div id="peta-tanpa-koord" class="mt-3 p-3 bg-kadaster-light border border-kadaster-border rounded-sm hidden">
@@ -454,12 +482,12 @@ wizard(3);
     document.getElementById('peta-verifikasi').scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  // ─── FITUR KOREKSI KOORDINAT ───────────────────────────────────────────────
-  let koreksiAktif = null; // { uid, marker, namaAsli }
-  let polygonRings = [];   // rings dari poligon PS untuk validasi client-side
+  // ─── FITUR KOREKSI KOORDINAT (INPUT) ──────────────────────────────────────
+  let koreksiAktif = null;   // { uid, marker, namaAsli }
+  let previewMarker = null;  // Marker sementara untuk preview koordinat baru
+  let polygonRings  = [];    // Rings polygon PS untuk validasi client-side
 
-  // Simpan rings setelah data peta dimuat (dari fetch peta_data.php di atas)
-  // Patch: tambahkan listener setelah polygon dimuat
+  // Ambil rings polygon setelah data peta dimuat
   fetch(`peta_data.php?kth_id=${KTHID}`)
     .then(r => r.json())
     .then(data => {
@@ -473,7 +501,7 @@ wizard(3);
       }
     }).catch(() => {});
 
-  /** Ray-casting point-in-polygon (mirror dari PHP helpers.php) */
+  /** Ray-casting point-in-polygon */
   function titikDalamRing(lng, lat, ring) {
     let inside = false;
     const n = ring.length;
@@ -486,73 +514,147 @@ wizard(3);
     return inside;
   }
   function titikDalamPoligon(lng, lat) {
-    if (!polygonRings.length) return true; // Belum ada poligon → izinkan
+    if (!polygonRings.length) return true;
     return polygonRings.some(ring => titikDalamRing(lng, lat, ring));
   }
 
+  /** Aktifkan panel koreksi untuk petani tertentu */
   window.aktifkanKoreksi = function(uid) {
     if (koreksiAktif) batalKoreksi();
     const marker = markerMap[uid];
-    if (!marker) {
-      alert('Petani ini belum memiliki koordinat. Tambahkan koordinat pada data usulan terlebih dahulu.');
-      return;
-    }
-    // Scroll ke peta
-    document.getElementById('peta-verifikasi').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    peta.flyTo(marker.getLatLng(), 17, { duration: 0.8 });
-
-    // Aktifkan drag pada marker
-    marker.dragging.enable();
-    marker.getElement()?.classList.add('marker-draggable');
 
     const baris = document.getElementById('baris-' + uid);
     const nama = baris ? baris.querySelector('td:nth-child(2)')?.textContent?.trim() : 'Petani #' + uid;
-
     koreksiAktif = { uid, marker, namaAsli: nama };
 
     // Tampilkan panel
     const panel = document.getElementById('panel-koreksi');
     panel.className = 'mt-3 aktif';
-    document.getElementById('panel-koreksi-nama').textContent = '✏️ Koreksi Posisi: ' + nama;
+    document.getElementById('panel-koreksi-nama').textContent = '✏️ ' + nama;
 
-    const updatePanel = () => {
+    // Isi input dengan koordinat saat ini (jika ada)
+    const inputLat = document.getElementById('input-koreksi-lat');
+    const inputLng = document.getElementById('input-koreksi-lng');
+    const asliEl  = document.getElementById('panel-koreksi-asli');
+
+    if (marker) {
       const ll = marker.getLatLng();
-      const masuk = titikDalamPoligon(ll.lng, ll.lat);
-      document.getElementById('panel-koreksi-koord').textContent =
-        ll.lat.toFixed(6) + ', ' + ll.lng.toFixed(6);
-      const btnSimpan = document.getElementById('btn-simpan-koreksi');
-      btnSimpan.disabled = !masuk;
-      const pesan = document.getElementById('panel-koreksi-pesan');
-      if (!masuk) {
-        pesan.textContent = '⚠️ Posisi masih di luar poligon PS. Geser marker lebih ke dalam area.';
-        pesan.classList.remove('hidden');
-      } else {
-        pesan.textContent = '✓ Posisi valid — di dalam poligon PS.';
-        pesan.className = 'text-xs text-audit-valid font-medium';
-        pesan.classList.remove('hidden');
-      }
-    };
-    marker.on('drag dragend', updatePanel);
-    updatePanel();
+      inputLat.value = ll.lat.toFixed(6);
+      inputLng.value = ll.lng.toFixed(6);
+      asliEl.textContent = ll.lat.toFixed(6) + ', ' + ll.lng.toFixed(6);
+      // Zoom ke marker
+      document.getElementById('peta-verifikasi').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      peta.flyTo(ll, 17, { duration: 0.8 });
+    } else {
+      inputLat.value = '';
+      inputLng.value = '';
+      asliEl.textContent = 'Belum ada koordinat';
+    }
+
+    // Reset state
+    inputLat.className = inputLat.className.replace(/\b(valid|invalid)\b/g, '').trim();
+    inputLng.className = inputLng.className.replace(/\b(valid|invalid)\b/g, '').trim();
+    document.getElementById('panel-koreksi-pesan').classList.add('hidden');
+    document.getElementById('btn-simpan-koreksi').disabled = true;
+
+    validasiKoreksi(); // Validasi langsung jika koordinat sudah terisi
   };
 
+  /** Validasi input koordinat dan update UI secara real-time */
+  window.validasiKoreksi = function() {
+    const lat = parseFloat(document.getElementById('input-koreksi-lat').value);
+    const lng = parseFloat(document.getElementById('input-koreksi-lng').value);
+    const pesan = document.getElementById('panel-koreksi-pesan');
+    const btnSimpan = document.getElementById('btn-simpan-koreksi');
+    const inputLat = document.getElementById('input-koreksi-lat');
+    const inputLng = document.getElementById('input-koreksi-lng');
+
+    // Reset kelas
+    const resetKls = el => { el.classList.remove('valid','invalid'); };
+    resetKls(inputLat); resetKls(inputLng);
+
+    if (isNaN(lat) || isNaN(lng)) {
+      pesan.textContent = 'Masukkan nilai latitude dan longitude yang valid.';
+      pesan.className = 'text-xs font-medium mb-3 text-amber-700';
+      pesan.classList.remove('hidden');
+      btnSimpan.disabled = true;
+      return;
+    }
+
+    // Cek rentang wilayah Indonesia
+    if (lat < -15 || lat > 10 || lng < 90 || lng > 145) {
+      inputLat.classList.add('invalid'); inputLng.classList.add('invalid');
+      pesan.textContent = '⚠️ Koordinat di luar rentang wilayah Indonesia (-15 s.d. 10 lat, 90 s.d. 145 lng).';
+      pesan.className = 'text-xs font-medium mb-3 text-audit-revisi';
+      pesan.classList.remove('hidden');
+      btnSimpan.disabled = true;
+      return;
+    }
+
+    const masuk = titikDalamPoligon(lng, lat);
+
+    if (masuk) {
+      inputLat.classList.add('valid'); inputLng.classList.add('valid');
+      pesan.textContent = '✓ Koordinat valid — berada di dalam poligon PS.';
+      pesan.className = 'text-xs font-medium mb-3 text-audit-valid';
+      pesan.classList.remove('hidden');
+      btnSimpan.disabled = false;
+    } else {
+      inputLat.classList.add('invalid'); inputLng.classList.add('invalid');
+      pesan.textContent = '⚠️ Koordinat berada di luar poligon areal PS. Masukkan koordinat yang berada di dalam batas PS.';
+      pesan.className = 'text-xs font-medium mb-3 text-audit-revisi';
+      pesan.classList.remove('hidden');
+      btnSimpan.disabled = true;
+    }
+  };
+
+  /** Tampilkan preview marker di peta sesuai input */
+  window.previewKoreksi = function() {
+    const lat = parseFloat(document.getElementById('input-koreksi-lat').value);
+    const lng = parseFloat(document.getElementById('input-koreksi-lng').value);
+    if (isNaN(lat) || isNaN(lng)) { alert('Isi latitude dan longitude terlebih dahulu.'); return; }
+
+    if (previewMarker) { peta.removeLayer(previewMarker); }
+    const masuk = titikDalamPoligon(lng, lat);
+    const warna = masuk ? 'hijau' : 'oranye';
+
+    // Ikon preview berwarna berbeda
+    const ikonPreview = L.divIcon({
+      html: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="38" viewBox="0 0 26 34">
+        <path d="M13 0C5.82 0 0 5.82 0 13c0 9.75 13 21 13 21S26 22.75 26 13C26 5.82 20.18 0 13 0z"
+          fill="${masuk ? '#1D5C3A' : '#B45309'}" stroke="${masuk ? '#0f3320' : '#78350F'}" stroke-width="1.5"/>
+        <text x="13" y="17" text-anchor="middle" font-size="9" font-weight="bold" fill="#fff"
+          font-family="monospace">BARU</text>
+      </svg>`,
+      className: '', iconSize: [28, 38], iconAnchor: [14, 38], popupAnchor: [0, -36],
+    });
+
+    previewMarker = L.marker([lat, lng], { icon: ikonPreview })
+      .bindPopup(`<div class="p-1 text-xs"><b>Preview Posisi Baru</b><br>${lat.toFixed(6)}, ${lng.toFixed(6)}<br><span style="color:${masuk?'#1D5C3A':'#9E2A2B'}">${masuk ? '✓ Dalam Peta PS' : '✗ Luar Peta PS'}</span></div>`)
+      .addTo(peta);
+    peta.flyTo([lat, lng], 17, { duration: 0.8 });
+    setTimeout(() => previewMarker.openPopup(), 900);
+  };
+
+  /** Batal: tutup panel, hapus preview marker */
   window.batalKoreksi = function() {
-    if (!koreksiAktif) return;
-    const { uid, marker } = koreksiAktif;
-    marker.dragging.disable();
-    marker.getElement()?.classList.remove('marker-draggable');
-    marker.off('drag dragend');
+    if (previewMarker) { peta.removeLayer(previewMarker); previewMarker = null; }
     koreksiAktif = null;
     const panel = document.getElementById('panel-koreksi');
     panel.className = 'mt-3'; panel.style.display = 'none';
+    document.getElementById('input-koreksi-lat').value = '';
+    document.getElementById('input-koreksi-lng').value = '';
     document.getElementById('panel-koreksi-pesan').classList.add('hidden');
     document.getElementById('btn-simpan-koreksi').disabled = true;
   };
 
+  /** Simpan koordinat baru ke server */
   window.simpanKoreksi = function() {
     if (!koreksiAktif) return;
     const { uid, marker, namaAsli } = koreksiAktif;
-    const ll = marker.getLatLng();
+    const lat = parseFloat(document.getElementById('input-koreksi-lat').value);
+    const lng = parseFloat(document.getElementById('input-koreksi-lng').value);
+    if (isNaN(lat) || isNaN(lng)) { alert('Koordinat tidak valid.'); return; }
 
     const btn = document.getElementById('btn-simpan-koreksi');
     btn.disabled = true;
@@ -561,7 +663,7 @@ wizard(3);
     fetch('proses_koreksi_koordinat.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `usulan_id=${uid}&lat=${ll.lat}&lng=${ll.lng}`,
+      body: `usulan_id=${uid}&lat=${lat}&lng=${lng}`,
     })
     .then(r => r.json())
     .then(j => {
@@ -572,25 +674,28 @@ wizard(3);
           const tdKoord = baris.querySelector('td:nth-child(5)');
           if (tdKoord) tdKoord.innerHTML = '<span class="badge-hijau">Dalam Peta PS</span>';
           baris.dataset.ko = 'dalam';
-          const btnKoreksi = document.getElementById('btn-koreksi-' + uid);
-          if (btnKoreksi) btnKoreksi.outerHTML = '<span class="text-[10px] text-audit-valid font-semibold">✓ OK</span>';
+          const btnK = document.getElementById('btn-koreksi-' + uid);
+          if (btnK) btnK.outerHTML = '<span class="text-[10px] text-audit-valid font-semibold">✓ OK</span>';
         }
-        // Ganti warna marker ke hijau
-        marker.setIcon(buatIkon('hijau', String(uid)));
+        // Pindahkan marker asli ke posisi baru
+        if (marker) {
+          marker.setLatLng([lat, lng]);
+          marker.setIcon(buatIkon('hijau', koreksiAktif.uid ? String(koreksiAktif.uid) : '?'));
+        }
         batalKoreksi();
-        alert('✅ Koreksi posisi "' + namaAsli + '" berhasil disimpan.\nKoordinat asli tetap tersimpan di data usulan.');
+        alert('✅ Koordinat baru berhasil disimpan.\n' + namaAsli + '\n📍 ' + lat.toFixed(6) + ', ' + lng.toFixed(6) + '\n\nKoordinat asli di data usulan tidak berubah.');
       } else {
         btn.disabled = false;
-        btn.textContent = '✓ Simpan Posisi Baru';
+        btn.textContent = '✓ Simpan Koordinat Baru';
         const pesan = document.getElementById('panel-koreksi-pesan');
         pesan.textContent = '⚠️ ' + j.msg;
-        pesan.className = 'text-xs text-audit-revisi font-medium';
+        pesan.className = 'text-xs font-medium mb-3 text-audit-revisi';
         pesan.classList.remove('hidden');
       }
     })
     .catch(() => {
       btn.disabled = false;
-      btn.textContent = '✓ Simpan Posisi Baru';
+      btn.textContent = '✓ Simpan Koordinat Baru';
       alert('Gagal menghubungi server. Periksa koneksi.');
     });
   };
