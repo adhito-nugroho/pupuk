@@ -6,7 +6,7 @@ require_once __DIR__ . '/lib/helpers.php';
 require_once __DIR__ . '/lib/layout.php';
 
 $kths = db()->query('SELECT id, nama_kth, nomor_sk FROM kth ORDER BY nama_kth')->fetchAll();
-layout_head('Buka Kasus Baru — Tahap 1', 'baru');
+layout_head('Buka Kasus Verifikasi Baru — Tahap 01', 'baru');
 wizard(1);
 ?>
 
@@ -14,7 +14,7 @@ wizard(1);
   <!-- Header Formulir Berkas -->
   <div class="border-b border-kadaster-border pb-4 mb-6">
     <div class="text-[11px] font-mono text-ink-faint uppercase tracking-wider">
-      Tahap 01 Administrasi &amp; Registrasi Berkas
+      Tahap 01 Berkas Usulan &amp; Peta
     </div>
     <h2 class="font-serif text-2xl font-bold text-ink mt-0.5">
       Formulir Berkas Usulan &amp; Data Spasial
@@ -168,7 +168,7 @@ wizard(1);
         ← Batal
       </a>
       <button type="submit" class="btn-forest px-5 py-2.5 text-xs inline-flex items-center gap-2">
-        <span>Simpan &amp; Lanjut ke Tahap 02 (Konfirmasi SK)</span>
+        <span>Simpan &amp; Lanjut ke Tahap 02 — Konfirmasi SK</span>
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
         </svg>

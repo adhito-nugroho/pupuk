@@ -66,7 +66,7 @@ wizard(3);
   <div class="flex flex-wrap items-start justify-between gap-4 pb-5 border-b border-kadaster-border">
     <div>
       <div class="flex items-center gap-2 mb-1">
-        <span class="text-[11px] font-semibold tracking-wider text-forest-700 uppercase">Tahap 3 dari 4 — Hasil Uji Spasial &amp; Yuridis</span>
+        <span class="text-[11px] font-semibold tracking-wider text-forest-700 uppercase">Tahap 03 — Uji Spasial &amp; Titik</span>
         <span class="text-kadaster-border">·</span>
         <span class="text-[11px] text-ink-muted">Tahun Usulan <?= e($k['tahun_usulan'] ?? date('Y')) ?></span>
       </div>
@@ -93,7 +93,7 @@ wizard(3);
     <div class="flex flex-wrap items-center gap-2">
       <a href="konfirmasi_sk.php?kth_id=<?= $kthId ?>" class="btn-kadaster px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium">
         <svg class="w-3.5 h-3.5 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-        Kembali ke Konfirmasi SK
+        Kembali ke Tahap 02 — Konfirmasi SK
       </a>
       <form action="verifikasi_ulang.php" method="post" class="inline m-0">
         <input type="hidden" name="kth_id" value="<?= $kthId ?>">
@@ -107,7 +107,7 @@ wizard(3);
         Cetak Format Peta
       </a>
       <a href="laporan.php?kth_id=<?= $kthId ?>" class="btn-forest px-4 py-2 text-xs inline-flex items-center gap-1.5 font-semibold">
-        Lanjut ke Berita Acara
+        Lanjut ke Tahap 04 — Berita Acara Rekomendasi
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
       </a>
     </div>
@@ -126,7 +126,7 @@ wizard(3);
 
     <div class="bg-white p-4">
       <div class="text-[11px] font-semibold text-audit-valid uppercase tracking-wider flex items-center justify-between">
-        <span>Sesuai SK Perhutanan</span>
+        <span>Sesuai SK PS</span>
         <span class="font-mono font-bold"><?= $pctSK ?>%</span>
       </div>
       <div class="mt-1 flex items-baseline gap-2">
@@ -140,7 +140,7 @@ wizard(3);
 
     <div class="bg-white p-4">
       <div class="text-[11px] font-semibold text-forest-700 uppercase tracking-wider flex items-center justify-between">
-        <span>Titik Dalam Poligon PS</span>
+        <span>Dalam Peta PS</span>
         <span class="font-mono font-bold"><?= $pctPeta ?>%</span>
       </div>
       <div class="mt-1 flex items-baseline gap-2">
@@ -187,7 +187,7 @@ wizard(3);
         </span>
         <span class="flex items-center gap-1.5">
           <span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#9E2A2B;"></span>
-          Belum SK
+          Belum Sesuai SK PS
         </span>
         <span class="flex items-center gap-1.5">
           <span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#B45309;"></span>
@@ -266,7 +266,7 @@ wizard(3);
         <label class="text-xs font-semibold text-ink-muted">Filter Audit:</label>
         <select x-model="filter" class="border border-kadaster-border rounded px-3 py-1.5 text-xs font-medium bg-white text-ink focus:border-forest-900 outline-none">
           <option value="semua">Semua Usulan (<?= count($rows) ?>)</option>
-          <option value="tidak-sk">Belum Sesuai SK (<?= $hitung['tidak'] ?>)</option>
+          <option value="tidak-sk">Belum Sesuai SK PS (<?= $hitung['tidak'] ?>)</option>
           <option value="luar">Luar Peta PS (<?= $hitung['luar'] ?>)</option>
           <option value="bermasalah">Semua Masalah (<?= $jmlMasalah ?>)</option>
         </select>
@@ -287,7 +287,7 @@ wizard(3);
       <thead>
         <tr class="bg-[#F6F2E9] border-b border-kadaster-border text-ink">
           <th class="px-3 py-2.5 text-center font-semibold uppercase tracking-wider w-12 text-[11px]">No</th>
-          <th class="px-3 py-2.5 text-left font-semibold uppercase tracking-wider text-[11px]">Nama Pemohon (Usulan)</th>
+          <th class="px-3 py-2.5 text-left font-semibold uppercase tracking-wider text-[11px]">Nama Pemohon</th>
           <th class="px-3 py-2.5 text-left font-semibold uppercase tracking-wider text-[11px]">NIK</th>
           <th class="px-3 py-2.5 text-center font-semibold uppercase tracking-wider text-[11px]">Status SK PS</th>
           <th class="px-3 py-2.5 text-center font-semibold uppercase tracking-wider text-[11px]">Posisi Spasial</th>
@@ -423,7 +423,7 @@ wizard(3);
         const p = f.properties;
         if (!f.geometry) { tanpaKoord.push(p); return; }
         const [lng, lat] = f.geometry.coordinates;
-        const bSK = p.status_sk === 'Sesuai SK PS' ? badgeHtml('Sesuai SK','hijau') : badgeHtml('Belum Sesuai SK','merah');
+        const bSK = p.status_sk === 'Sesuai SK PS' ? badgeHtml('Sesuai SK PS','hijau') : badgeHtml('Belum Sesuai SK PS','merah');
         const bKoord = p.status_koord === 'Dalam Peta PS' ? badgeHtml('Dalam Peta PS','hijau') : badgeHtml('Luar Peta PS','oranye');
         const mirip = p.nama_mirip && p.kemiripan
           ? `<div class="mt-1 text-ink-muted text-xs">Kemiripan nama SK (${parseFloat(p.kemiripan).toFixed(1)}%): <b>${p.nama_mirip}</b></div>` : '';

@@ -59,7 +59,7 @@ $baTgl   = $lap['tgl_ba']       ?? null;
   <div class="flex flex-wrap items-start justify-between gap-4">
     <div>
       <div class="flex items-center gap-2 mb-1">
-        <span class="text-[11px] font-semibold tracking-wider text-forest-700 uppercase">Tahap 4 dari 4 — Berita Acara &amp; Rekomendasi Akhir</span>
+        <span class="text-[11px] font-semibold tracking-wider text-forest-700 uppercase">Tahap 04 — Berita Acara Rekomendasi</span>
         <span class="text-kadaster-border">·</span>
         <span class="text-[11px] text-ink-muted">Tahun Usulan <?= e($lap['tahun'] ?? date('Y')) ?></span>
       </div>
@@ -84,7 +84,7 @@ $baTgl   = $lap['tgl_ba']       ?? null;
     <div class="flex flex-wrap items-center gap-2">
       <a href="hasil.php?kth_id=<?= $kthId ?>" class="btn-kadaster px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium">
         <svg class="w-3.5 h-3.5 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-        Kembali ke Uji Spasial
+        Kembali ke Tahap 03 — Uji Spasial &amp; Titik
       </a>
       <a href="export.php?kth_id=<?= $kthId ?>" class="btn-kadaster px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-700 hover:text-forest-900 border-kadaster-border">
         <svg class="w-3.5 h-3.5 text-forest-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -199,7 +199,7 @@ $baTgl   = $lap['tgl_ba']       ?? null;
     
     <div class="grid md:grid-cols-3 gap-4">
       <div>
-        <label class="block text-xs font-semibold text-ink mb-1.5">Tahun Anggaran Usulan</label>
+        <label class="block text-xs font-semibold text-ink mb-1.5">Tahun Usulan</label>
         <input type="text" name="tahun" value="<?= e($lap['tahun'] ?? date('Y')) ?>" class="w-full border border-kadaster-border rounded px-3 py-2 text-xs bg-white text-ink focus:border-forest-900 outline-none font-mono">
         <p class="text-[11px] text-ink-muted mt-1">Tahun alokasi pupuk bersubsidi.</p>
       </div>
@@ -239,7 +239,7 @@ $baTgl   = $lap['tgl_ba']       ?? null;
       <div class="flex flex-wrap items-center gap-2">
         <button type="submit" class="btn-forest px-5 py-2 text-xs inline-flex items-center gap-1.5 font-semibold">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-          Simpan Laporan &amp; Berita Acara
+          Simpan Berita Acara Rekomendasi
         </button>
         <a href="export.php?kth_id=<?= $kthId ?>" class="btn-kadaster px-4 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-700 hover:text-forest-900">
           <svg class="w-3.5 h-3.5 text-forest-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -247,7 +247,7 @@ $baTgl   = $lap['tgl_ba']       ?? null;
         </a>
         <a href="cetak_peta.php?kth_id=<?= $kthId ?>" target="_blank" class="btn-kadaster px-4 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-700 hover:text-forest-900">
           <svg class="w-3.5 h-3.5 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-          Cetak Peta Spasial
+          Cetak Peta Lampiran
         </a>
       </div>
 
@@ -314,7 +314,7 @@ $baTgl   = $lap['tgl_ba']       ?? null;
       Lampiran Berita Acara Perbaikan
     </h3>
     <p class="text-xs text-ink-muted mt-1">
-      Upload satu file Berita Acara (<code>.docx</code>) untuk seluruh kasus ini (<b><?= $hitung['tidak'] ?> petani</b> belum tercantum dalam SK).
+      Upload satu file Berita Acara (<code>.docx</code>) untuk seluruh Berkas Kasus ini (<b><?= $hitung['tidak'] ?> Pemohon</b> Belum Sesuai SK PS).
       File ini menjadi dokumen pendukung perbaikan nama/NIK secara administratif.
       <span class="font-semibold text-amber-700">Data usulan asli tidak akan diubah.</span>
     </p>

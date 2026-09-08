@@ -15,7 +15,7 @@ $kth = $pdo->prepare('SELECT * FROM kth WHERE id = ?');
 $kth->execute([$kthId]);
 $k = $kth->fetch();
 if (!$k) {
-    echo '<div style="font-family:sans-serif;padding:40px;text-align:center"><h3>Data KTH tidak ditemukan.</h3><a href="index.php">Kembali ke Beranda</a></div>';
+    echo '<div style="font-family:sans-serif;padding:40px;text-align:center"><h3>Data KTH tidak ditemukan.</h3><a href="index.php">Kembali ke Buku Register</a></div>';
     exit;
 }
 
@@ -797,7 +797,7 @@ $live = $h->fetch() ?: ['total'=>0,'sesuai'=>0,'tidak'=>0,'dalam'=>0,'luar'=>0];
             <!-- Titik verifikasi pupuk -->
             <div class="legend-row" id="legRowSesuai">
               <span class="symbol-dot dot-green"></span>
-              <span>Sesuai SK &amp; Dalam Peta</span>
+              <span>Sesuai SK PS &amp; Dalam Peta PS</span>
             </div>
             <div class="legend-row" id="legRowBelum">
               <span class="symbol-dot dot-red"></span>

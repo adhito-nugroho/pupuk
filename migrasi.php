@@ -126,6 +126,6 @@ a.btn { display: inline-block; margin-top: 20px; padding: 10px 20px; background:
     : '✅ Migrasi berhasil! Semua kolom sudah tersedia.' ?>
 </div>
 
-<a class="btn" href="index.php">← Kembali ke Beranda</a>
+<a class="btn" href="index.php">← Kembali ke Buku Register</a>
 </body>
 </html>

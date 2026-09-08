@@ -24,7 +24,7 @@ layout_head('Buku Register Kasus', 'daftar');
   <div class="flex flex-col md:flex-row md:items-center justify-between gap-5 pb-4 border-b border-kadaster-border">
     <div>
       <div class="text-[11px] font-mono uppercase tracking-wider text-ink-faint">
-        Dokumen Register CDK Bojonegoro · Tahun Anggaran <?= date('Y') ?>
+        Dokumen Register CDK Bojonegoro · Tahun Usulan <?= date('Y') ?>
       </div>
       <h2 class="font-serif text-2xl font-bold text-ink mt-0.5">
         Buku Register Verifikasi Usulan Pupuk
@@ -90,7 +90,7 @@ layout_head('Buku Register Kasus', 'daftar');
       Belum ada data kasus KTH yang dimasukkan. Silakan mulai dengan membuat berkas verifikasi usulan baru.
     </p>
     <a href="baru.php" class="btn-forest px-4 py-2 text-xs inline-flex items-center gap-1.5">
-      + Buka Kasus Baru
+      + Buka Kasus Verifikasi Baru
     </a>
   </div>
 <?php else: ?>
@@ -157,12 +157,12 @@ layout_head('Buku Register Kasus', 'daftar');
           <td class="py-3 px-3.5">
             <div class="flex items-center justify-center gap-1">
               <a href="konfirmasi_sk.php?kth_id=<?= (int)$r['id'] ?>"
-                 title="Tahap 2: Konfirmasi SK"
+                 title="Tahap 02 — Konfirmasi SK"
                  class="px-2 py-1 border border-kadaster-border text-ink-muted hover:text-forest-900 hover:border-forest-900 bg-[#FAF8F3] text-[11px] font-medium transition-colors">
                 SK
               </a>
               <a href="hasil.php?kth_id=<?= (int)$r['id'] ?>"
-                 title="Tahap 3: Uji Spasial & Titik"
+                 title="Tahap 03 — Uji Spasial & Titik"
                  class="px-2 py-1 border border-kadaster-border text-ink-muted hover:text-forest-900 hover:border-forest-900 bg-[#FAF8F3] text-[11px] font-medium transition-colors">
                 Peta
               </a>
@@ -173,7 +173,7 @@ layout_head('Buku Register Kasus', 'daftar');
                 Cetak
               </a>
               <a href="laporan.php?kth_id=<?= (int)$r['id'] ?>"
-                 title="Tahap 4: Berita Acara & Laporan"
+                 title="Tahap 04 — Berita Acara Rekomendasi"
                  class="px-2 py-1 border border-kadaster-border text-ink-muted hover:text-forest-900 hover:border-forest-900 bg-[#FAF8F3] text-[11px] font-medium transition-colors">
                 Laporan
               </a>

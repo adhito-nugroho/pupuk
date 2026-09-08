@@ -263,14 +263,14 @@ function layout_foot(): void {
 // Stempel Status SK (Legalitas)
 function badge_sk(string $s): string {
     return $s === 'Sesuai SK PS'
-        ? '<span class="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-semibold text-audit-valid bg-audit-validBg border border-audit-validBorder border-l-2 border-l-audit-valid"><span class="w-1.5 h-1.5 bg-audit-valid inline-block"></span>Sesuai SK</span>'
-        : '<span class="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-semibold text-audit-revisi bg-audit-revisiBg border border-audit-revisiBorder border-l-2 border-l-audit-revisi"><span class="w-1.5 h-1.5 bg-audit-revisi inline-block"></span>Belum Sesuai SK</span>';
+        ? '<span class="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-semibold text-audit-valid bg-audit-validBg border border-audit-validBorder border-l-2 border-l-audit-valid"><span class="w-1.5 h-1.5 bg-audit-valid inline-block"></span>Sesuai SK PS</span>'
+        : '<span class="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-semibold text-audit-revisi bg-audit-revisiBg border border-audit-revisiBorder border-l-2 border-l-audit-revisi"><span class="w-1.5 h-1.5 bg-audit-revisi inline-block"></span>Belum Sesuai SK PS</span>';
 }
 
 // Stempel Status Posisi Koordinat (Spasial)
 function badge_koord(string $s): string {
     return $s === 'Dalam Peta PS'
-        ? '<span class="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-semibold text-forest-900 bg-forest-50 border border-forest-100 border-l-2 border-l-forest-900"><span class="w-1.5 h-1.5 bg-forest-900 inline-block"></span>Dalam Peta</span>'
+        ? '<span class="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-semibold text-forest-900 bg-forest-50 border border-forest-100 border-l-2 border-l-forest-900"><span class="w-1.5 h-1.5 bg-forest-900 inline-block"></span>Dalam Peta PS</span>'
         : '<span class="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-semibold text-audit-warn bg-audit-warnBg border border-audit-warnBorder border-l-2 border-l-audit-warn"><span class="w-1.5 h-1.5 bg-audit-warn inline-block"></span>Luar Peta PS</span>';
 }
 
@@ -278,7 +278,7 @@ function badge_koord(string $s): string {
 function wizard(int $step): void {
     $steps = [
         1 => ['no' => '01', 'label' => 'Berkas Usulan & Peta', 'sub' => 'Upload Excel & SHP'],
-        2 => ['no' => '02', 'label' => 'Legitimasi SK',       'sub' => 'Ekstraksi & Anggota'],
+        2 => ['no' => '02', 'label' => 'Konfirmasi SK',       'sub' => 'Daftar Anggota SK'],
         3 => ['no' => '03', 'label' => 'Uji Spasial & Titik',  'sub' => 'Validasi Koordinat'],
         4 => ['no' => '04', 'label' => 'Berita Acara Rekomendasi', 'sub' => 'Laporan Akhir'],
     ];
