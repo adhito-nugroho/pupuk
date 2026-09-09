@@ -24,9 +24,25 @@ $h = $pdo->prepare('SELECT COUNT(*) total,
   SUM(status_koordinat != "Dalam Peta PS") luar FROM hasil_verifikasi WHERE kth_id = ?');
 $h->execute([$kthId]);
 $live = $h->fetch() ?: ['total' => 0, 'sesuai' => 0, 'tidak' => 0, 'dalam' => 0, 'luar' => 0];
-$hitung = ['total' => (int)$live['total'], 'sesuai' => (int)$live['sesuai'], 'tidak' => (int)$live['tidak'],
-           'dalam' => (int)$live['dalam'], 'luar' => (int)$live['luar']];
-$rekomAuto = ($hitung['tidak'] === 0 && $hitung['luar'] === 0 && $hitung['total'] > 0) ? 'Dapat Ditindaklanjuti' : 'Perlu Revisi';
+
+$qLuas = $pdo->prepare('SELECT SUM(luas_lahan) AS total_luas, COUNT(CASE WHEN luas_lahan > 2.0 THEN 1 END) AS lebih_2ha FROM usulan_pupuk WHERE kth_id = ?');
+$qLuas->execute([$kthId]);
+$rowLuas = $qLuas->fetch() ?: [];
+$totalLuasUsulan = (float)($rowLuas['total_luas'] ?? 0.0);
+$lebih2haCount = (int)($rowLuas['lebih_2ha'] ?? 0);
+$luasSk = !empty($k['luas_areal']) ? (float)$k['luas_areal'] : 0.0;
+$pctLuasSk = $luasSk > 0 ? round(($totalLuasUsulan / $luasSk) * 100, 2) : 0;
+
+$hitung = [
+    'total' => (int)$live['total'],
+    'sesuai' => (int)$live['sesuai'],
+    'tidak' => (int)$live['tidak'],
+    'dalam' => (int)$live['dalam'],
+    'luar' => (int)$live['luar'],
+    'lebih_luas' => $lebih2haCount,
+    'total_luas' => $totalLuasUsulan,
+];
+$rekomAuto = ($hitung['tidak'] === 0 && $hitung['luar'] === 0 && $hitung['lebih_luas'] === 0 && $hitung['total'] > 0) ? 'Dapat Ditindaklanjuti' : 'Perlu Revisi';
 
 if (!$lap) {
     $lap = ['tahun' => $k['tahun_usulan'] ?? date('Y'), 'narasi' => buat_narasi_default($k, (int)($k['tahun_usulan'] ?? date('Y')), $hitung),
@@ -78,6 +94,12 @@ $baTgl   = $lap['tgl_ba']       ?? null;
         <span class="text-kadaster-border">·</span>
         <span><b>KPH:</b> <?= e($k['nama_kph']) ?></span>
         <?php endif; ?>
+        <?php if ($luasSk > 0): ?>
+        <span class="text-kadaster-border">·</span>
+        <span><b>Luas SK:</b> <?= e(number_format($luasSk, 2, ',', '.')) ?> Ha</span>
+        <?php endif; ?>
+        <span class="text-kadaster-border">·</span>
+        <span><b>Total Usulan:</b> <b class="text-forest-900"><?= e(number_format($totalLuasUsulan, 2, ',', '.')) ?> Ha</b><?= $luasSk > 0 ? " ({$pctLuasSk}%)" : '' ?></span>
       </p>
     </div>
 
@@ -116,12 +138,17 @@ $baTgl   = $lap['tgl_ba']       ?? null;
 
       <p class="text-xs text-ink leading-relaxed mt-2">
         <?php if ($isSesuaiSemua): ?>
-          Berdasarkan penelaahan komparatif, seluruh <b><?= $hitung['total'] ?> pemohon</b> tercantum dalam Keputusan Persetujuan Pengelolaan Perhutanan Sosial dan seluruh titik koordinat garapan berada di dalam deliniasi peta areal izin.
+          Berdasarkan penelaahan komparatif, seluruh <b><?= $hitung['total'] ?> pemohon</b> tercantum dalam Keputusan Persetujuan Pengelolaan Perhutanan Sosial dan seluruh titik koordinat garapan berada di dalam deliniasi peta areal izin. Total luas usulan sebesar <b><?= number_format($totalLuasUsulan, 2, ',', '.') ?> Ha</b> (<b><?= number_format($pctLuasSk, 2, ',', '.') ?>%</b> dari SK PS <?= number_format($luasSk, 2, ',', '.') ?> Ha) dan seluruh petani memenuhi batas maksimal 2 Ha per orang.
         <?php else: ?>
-          Ditemukan ketidaksesuaian yuridis atau spasial: 
-          <?php if ($hitung['tidak'] > 0): ?><b><?= $hitung['tidak'] ?> nama belum tercantum dalam SK</b><?php endif; ?>
-          <?php if ($hitung['tidak'] > 0 && $hitung['luar'] > 0): ?> dan <?php endif; ?>
-          <?php if ($hitung['luar'] > 0): ?><b><?= $hitung['luar'] ?> koordinat berada di luar peta areal izin</b><?php endif; ?>. Perlu dilakukan verifikasi lapangan atau revisi dokumen sebelum penerbitan alokasi.
+          Ditemukan ketidaksesuaian yuridis, spasial, atau luasan usulan:
+          <?php
+            $kendala = [];
+            if ($hitung['tidak'] > 0) $kendala[] = "<b>{$hitung['tidak']} nama belum tercantum dalam SK</b>";
+            if ($hitung['luar'] > 0) $kendala[] = "<b>{$hitung['luar']} koordinat berada di luar peta areal izin</b>";
+            if ($hitung['lebih_luas'] > 0) $kendala[] = "<b>{$hitung['lebih_luas']} petani mengusulkan luas &gt; 2 Ha</b>";
+            echo implode(', ', $kendala) . '.';
+          ?>
+          Total luas lahan usulan tercatat <b><?= number_format($totalLuasUsulan, 2, ',', '.') ?> Ha</b><?php if ($luasSk > 0): ?> (<b><?= number_format($pctLuasSk, 2, ',', '.') ?>%</b> dari luas SK PS <?= number_format($luasSk, 2, ',', '.') ?> Ha)<?php endif; ?>. Perlu dilakukan verifikasi lapangan atau revisi dokumen sebelum penerbitan alokasi.
         <?php endif; ?>
       </p>
     </div>
@@ -135,7 +162,7 @@ $baTgl   = $lap['tgl_ba']       ?? null;
   <!-- Neraca Ringkasan Verifikasi (Cadastral Audit Ledger) -->
   <div class="md:col-span-7 doc-card p-6">
     <div class="flex items-center justify-between mb-4 pb-2 border-b border-kadaster-border">
-      <h3 class="font-serif font-bold text-base text-ink">Neraca Kesesuaian Yuridis &amp; Spasial</h3>
+      <h3 class="font-serif font-bold text-base text-ink">Neraca Kesesuaian Yuridis, Spasial &amp; Luasan</h3>
       <span class="text-xs font-mono font-semibold text-ink-muted tabular-nums">Total: <?= $hitung['total'] ?> Pemohon</span>
     </div>
 
@@ -181,6 +208,32 @@ $baTgl   = $lap['tgl_ba']       ?? null;
           <span><span class="font-bold text-audit-warn"><?= $hitung['luar'] ?></span> titik di luar deliniasi peta</span>
         </div>
       </div>
+
+      <!-- Uji Luasan Usulan & Batas 2 Ha -->
+      <div>
+        <div class="flex justify-between text-xs mb-1.5">
+          <span class="font-semibold text-ink">3. Luas Usulan terhadap SK PS &amp; Batas 2 Ha</span>
+          <span class="font-mono font-bold text-ink tabular-nums">
+            <?= number_format($totalLuasUsulan, 2, ',', '.') ?> Ha
+            <?php if ($luasSk > 0): ?>
+              <span class="<?= $pctLuasSk > 100 ? 'text-audit-revisi font-bold' : 'text-forest-700 font-normal' ?>">(<?= number_format($pctLuasSk, 2, ',', '.') ?>% dari <?= number_format($luasSk, 2, ',', '.') ?> Ha)</span>
+            <?php endif; ?>
+          </span>
+        </div>
+        <div class="h-2.5 bg-kadaster-light border border-kadaster-border rounded-sm overflow-hidden flex">
+          <div class="<?= $pctLuasSk > 100 ? 'bg-audit-revisi' : 'bg-forest-900' ?> h-full" style="width: <?= min(100, (float)$pctLuasSk) ?>%"></div>
+        </div>
+        <div class="flex justify-between text-[11px] text-ink-muted mt-1">
+          <span><span class="font-bold <?= $hitung['lebih_luas'] === 0 ? 'text-audit-valid' : 'text-ink' ?>"><?= $hitung['total'] - $hitung['lebih_luas'] ?></span> petani &le; 2 Ha (sesuai ketentuan)</span>
+          <span>
+            <?php if ($hitung['lebih_luas'] > 0): ?>
+              <span class="font-bold text-audit-revisi"><?= $hitung['lebih_luas'] ?></span> petani &gt; 2 Ha (melebihi batas)
+            <?php else: ?>
+              <span class="font-bold text-audit-valid">✓ Bebas usulan berlebih</span>
+            <?php endif; ?>
+          </span>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -217,7 +270,7 @@ $baTgl   = $lap['tgl_ba']       ?? null;
       <div>
         <label class="block text-xs font-semibold text-ink mb-1.5">Ringkasan Angka Audit</label>
         <div class="border border-kadaster-border bg-kadaster-light rounded px-3 py-2 text-[11px] text-ink-muted font-mono leading-relaxed">
-          Total: <?= $hitung['total'] ?> | SK: <?= $hitung['sesuai'] ?> ok, <?= $hitung['tidak'] ?> beda | Peta: <?= $hitung['dalam'] ?> dlm, <?= $hitung['luar'] ?> luar
+          Tot: <?= $hitung['total'] ?> | SK: <?= $hitung['sesuai'] ?> ok, <?= $hitung['tidak'] ?> beda | Peta: <?= $hitung['dalam'] ?> dlm, <?= $hitung['luar'] ?> luar | Luas: <?= number_format($totalLuasUsulan, 1, ',', '.') ?> Ha (<?= $pctLuasSk ?>%)<?= $hitung['lebih_luas'] > 0 ? " | >2Ha: {$hitung['lebih_luas']}" : '' ?>
         </div>
         <p class="text-[11px] text-ink-muted mt-1">Dihitung otomatis dari basis data.</p>
       </div>
@@ -420,7 +473,7 @@ $baTgl   = $lap['tgl_ba']       ?? null;
   </button>
   <div x-show="open" x-transition class="mt-3 pt-3 border-t border-kadaster-border">
     <p class="text-ink-muted mb-2">Redaksi default yang disusun oleh sistem menggunakan format klausul berikut:</p>
-    <div class="bg-kadaster-light border border-kadaster-border rounded p-3 font-mono text-[11px] text-ink whitespace-pre-wrap leading-relaxed">Berdasarkan hasil verifikasi data usulan pupuk subsidi tahun [TAHUN] terdapat sebanyak [TOTAL] petani. Dari hasil telaah diperoleh data bahwa sejumlah [JUMLAH_SESUAI] petani sudah sesuai dengan SK [NOMOR_SK], terdapat [JUMLAH_TIDAK_SESUAI] petani yang belum masuk ke dalam SK tersebut. Titik koordinat petani yang mengusulkan pupuk, sejumlah [JUMLAH_DALAM_PETA] berada dalam peta areal [NAMA_KTH] dan [JUMLAH_LUAR_PETA] berada di luar peta.</div>
+    <div class="bg-kadaster-light border border-kadaster-border rounded p-3 font-mono text-[11px] text-ink whitespace-pre-wrap leading-relaxed">Berdasarkan hasil verifikasi data usulan pupuk subsidi tahun [TAHUN] terdapat sebanyak [TOTAL] petani. Dari hasil telaah diperoleh data bahwa sejumlah [JUMLAH_SESUAI] petani sudah sesuai dengan SK [NOMOR_SK], terdapat [JUMLAH_TIDAK_SESUAI] petani yang belum masuk ke dalam SK tersebut. Titik koordinat petani yang mengusulkan pupuk, sejumlah [JUMLAH_DALAM_PETA] berada dalam peta areal [NAMA_KTH] dan [JUMLAH_LUAR_PETA] berada di luar peta. Total luas lahan yang diusulkan adalah seluas [TOTAL_LUAS] Ha atau [PERSEN_LUAS]% dari total luasan dalam SK PS ([LUAS_SK] Ha). Seluruh usulan petani memenuhi ketentuan batas maksimal luasan (tidak lebih dari 2 Ha per orang).</div>
     <form action="proses_laporan.php" method="post" class="mt-3">
       <input type="hidden" name="kth_id" value="<?= $kthId ?>">
       <input type="hidden" name="reset_template" value="1">

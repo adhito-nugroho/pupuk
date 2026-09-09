@@ -18,9 +18,21 @@ $h->execute([$kthId]);
 $live = $h->fetch();
 
 if (!empty($_POST['reset_template'])) {
-    $hitung = ['total' => (int)$live['total'], 'sesuai' => (int)$live['sesuai'], 'tidak' => (int)$live['tidak'], 'dalam' => (int)$live['dalam'], 'luar' => (int)$live['luar']];
+    $qLuas = $pdo->prepare('SELECT SUM(luas_lahan) AS total_luas, COUNT(CASE WHEN luas_lahan > 2.0 THEN 1 END) AS lebih_2ha FROM usulan_pupuk WHERE kth_id = ?');
+    $qLuas->execute([$kthId]);
+    $rowLuas = $qLuas->fetch() ?: [];
+
+    $hitung = [
+        'total' => (int)$live['total'],
+        'sesuai' => (int)$live['sesuai'],
+        'tidak' => (int)$live['tidak'],
+        'dalam' => (int)$live['dalam'],
+        'luar' => (int)$live['luar'],
+        'lebih_luas' => (int)($rowLuas['lebih_2ha'] ?? 0),
+        'total_luas' => (float)($rowLuas['total_luas'] ?? 0.0),
+    ];
     $narasi = buat_narasi_default($k, (int)($k['tahun_usulan'] ?? date('Y')), $hitung);
-    $rekom = ($hitung['tidak'] === 0 && $hitung['luar'] === 0 && $hitung['total'] > 0) ? 'Dapat Ditindaklanjuti' : 'Perlu Revisi';
+    $rekom = ($hitung['tidak'] === 0 && $hitung['luar'] === 0 && $hitung['lebih_luas'] === 0 && $hitung['total'] > 0) ? 'Dapat Ditindaklanjuti' : 'Perlu Revisi';
     $pdo->prepare('INSERT INTO laporan (kth_id, tahun, total_petani, jumlah_sesuai_sk, jumlah_tidak_sesuai_sk, jumlah_dalam_peta, jumlah_luar_peta, narasi, rekomendasi) VALUES (?,?,?,?,?,?,?,?,?)')
         ->execute([$kthId, (string)($k['tahun_usulan'] ?? date('Y')), $hitung['total'], $hitung['sesuai'], $hitung['tidak'], $hitung['dalam'], $hitung['luar'], $narasi, $rekom]);
     flash_set('ok', 'Narasi dikembalikan ke template otomatis (versi baru tersimpan).');

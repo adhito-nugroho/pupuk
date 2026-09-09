@@ -17,6 +17,10 @@ if ($id = $st->fetchColumn()) {
     $pdo->prepare('UPDATE laporan SET total_petani=?, jumlah_sesuai_sk=?, jumlah_tidak_sesuai_sk=?, jumlah_dalam_peta=?, jumlah_luar_peta=? WHERE id=?')
         ->execute([$hitung['total'], $hitung['sesuai'], $hitung['tidak'], $hitung['dalam'], $hitung['luar'], $id]);
 }
-flash_set('ok', 'Verifikasi dihitung ulang: ' . $hitung['sesuai'] . ' sesuai SK, ' . $hitung['tidak'] . ' belum; ' . $hitung['dalam'] . ' dalam peta, ' . $hitung['luar'] . ' luar peta.');
+$pesanFlash = 'Verifikasi dihitung ulang: ' . $hitung['sesuai'] . ' sesuai SK, ' . $hitung['tidak'] . ' belum; ' . $hitung['dalam'] . ' dalam peta, ' . $hitung['luar'] . ' luar peta.';
+if (!empty($hitung['lebih_luas'])) {
+    $pesanFlash .= ' (⚠️ Terdapat ' . $hitung['lebih_luas'] . ' petani dengan luas usulan melebihi 2 Ha).';
+}
+flash_set('ok', $pesanFlash);
 header('Location: hasil.php?kth_id=' . $kthId);
 exit;

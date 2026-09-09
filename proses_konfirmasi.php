@@ -94,7 +94,9 @@ try {
 }
 
 $pesan = 'Berhasil menyimpan ' . count($bersih) . ' anggota resmi SK' . ($tolak ? " ($tolak baris tidak valid dilewati)." : '.')
-    . " Hasil verifikasi: {$hitung['sesuai']} sesuai SK, {$hitung['tidak']} belum sesuai; {$hitung['dalam']} dalam peta PS, {$hitung['luar']} luar peta. Rekomendasi: {$hitung['rekomendasi']}.";
+    . " Hasil verifikasi: {$hitung['sesuai']} sesuai SK, {$hitung['tidak']} belum sesuai; {$hitung['dalam']} dalam peta PS, {$hitung['luar']} luar peta."
+    . ($hitung['lebih_luas'] > 0 ? " (⚠️ {$hitung['lebih_luas']} petani mengusulkan > 2 Ha)." : '')
+    . " Rekomendasi: {$hitung['rekomendasi']}.";
 
 flash_set('ok', $pesan);
 header('Location: hasil.php?kth_id=' . $kthId);

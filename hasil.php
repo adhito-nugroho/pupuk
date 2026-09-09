@@ -16,16 +16,19 @@ $q = $pdo->prepare('SELECT u.*, h.status_sk, h.status_koordinat, h.catatan, h.id
   FROM usulan_pupuk u LEFT JOIN hasil_verifikasi h ON h.usulan_id = u.id
   WHERE u.kth_id = ? ORDER BY COALESCE(u.no_urut, u.id)');
 $q->execute([$kthId]);
-$rows = $q->fetchAll();
-
-$hitung = ['total' => count($rows), 'sesuai' => 0, 'tidak' => 0, 'dalam' => 0, 'luar' => 0];
+$rows = $q->fetchAll();$hitung = ['total' => count($rows), 'sesuai' => 0, 'tidak' => 0, 'dalam' => 0, 'luar' => 0, 'lebih_luas' => 0, 'total_luas' => 0.0];
 foreach ($rows as $r) {
     if (($r['status_sk'] ?? '') === 'Sesuai SK PS') $hitung['sesuai']++; else $hitung['tidak']++;
     if (($r['status_koordinat'] ?? '') === 'Dalam Peta PS') $hitung['dalam']++; else $hitung['luar']++;
+    $luasVal = $r['luas_lahan'] !== null ? (float)$r['luas_lahan'] : 0.0;
+    $hitung['total_luas'] += $luasVal;
+    if ($luasVal > 2.0) $hitung['lebih_luas']++;
 }
 $pctSK = $hitung['total'] > 0 ? round($hitung['sesuai'] / $hitung['total'] * 100) : 0;
 $pctPeta = $hitung['total'] > 0 ? round($hitung['dalam'] / $hitung['total'] * 100) : 0;
-$jmlMasalah = $hitung['tidak'] + $hitung['luar'];
+$luasSk = !empty($k['luas_areal']) ? (float)$k['luas_areal'] : 0.0;
+$pctLuasSk = $luasSk > 0 ? round(($hitung['total_luas'] / $luasSk) * 100, 1) : 0;
+$jmlMasalah = $hitung['tidak'] + $hitung['luar'] + $hitung['lebih_luas'];
 
 $qLoc = $pdo->prepare('SELECT desa, kecamatan FROM usulan_pupuk WHERE kth_id = ? AND (desa IS NOT NULL AND desa != "") LIMIT 1');
 $qLoc->execute([$kthId]);
@@ -83,10 +86,12 @@ wizard(3);
         <span class="text-kadaster-border">·</span>
         <span><b>KPH:</b> <?= e($k['nama_kph']) ?></span>
         <?php endif; ?>
-        <?php if (!empty($k['luas_areal'])): ?>
+        <?php if ($luasSk > 0): ?>
         <span class="text-kadaster-border">·</span>
-        <span><b>Luas SK:</b> <?= e(number_format((float)$k['luas_areal'], 2, ',', '.')) ?> Ha</span>
+        <span><b>Luas SK:</b> <?= e(number_format($luasSk, 2, ',', '.')) ?> Ha</span>
         <?php endif; ?>
+        <span class="text-kadaster-border">·</span>
+        <span><b>Total Luas Usulan:</b> <b class="text-forest-900"><?= e(number_format($hitung['total_luas'], 2, ',', '.')) ?> Ha</b><?= $luasSk > 0 ? " ({$pctLuasSk}%)" : '' ?></span>
       </p>
     </div>
 
@@ -97,13 +102,13 @@ wizard(3);
       </a>
       <form action="verifikasi_ulang.php" method="post" class="inline m-0">
         <input type="hidden" name="kth_id" value="<?= $kthId ?>">
-        <button type="submit" class="btn-kadaster px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium hover:text-forest-900" title="Hitung ulang kecocokan spasial dan nama">
+        <button type="submit" class="btn-kadaster px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium hover:text-forest-900" title="Hitung ulang kecocokan spasial, nama, dan batas luas">
           <svg class="w-3.5 h-3.5 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
           Uji Ulang
         </button>
       </form>
       <a href="cetak_peta.php?kth_id=<?= $kthId ?>" target="_blank" class="btn-kadaster px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-700 hover:text-forest-900">
-        <svg class="w-3.5 h-3.5 fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
         Cetak Format Peta
       </a>
       <a href="laporan.php?kth_id=<?= $kthId ?>" class="btn-forest px-4 py-2 text-xs inline-flex items-center gap-1.5 font-semibold">
@@ -114,7 +119,7 @@ wizard(3);
   </div>
 
   <!-- Bilah Status Audit Spasial & Rekonsiliasi (Administrative Ledger Bar) -->
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-px bg-kadaster-border border border-kadaster-border rounded-sm overflow-hidden mt-5">
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-px bg-kadaster-border border border-kadaster-border rounded-sm overflow-hidden mt-5">
     <div class="bg-white p-4">
       <div class="text-[11px] font-semibold text-ink-muted uppercase tracking-wider">Total Terdaftar</div>
       <div class="mt-1 flex items-baseline gap-2">
@@ -153,6 +158,20 @@ wizard(3);
     </div>
 
     <div class="bg-white p-4">
+      <div class="text-[11px] font-semibold text-forest-900 uppercase tracking-wider flex items-center justify-between">
+        <span>Luas Usulan vs SK</span>
+        <span class="font-mono font-bold <?= $pctLuasSk > 100 ? 'text-audit-revisi' : 'text-forest-700' ?>"><?= $pctLuasSk ?>%</span>
+      </div>
+      <div class="mt-1 flex items-baseline gap-1.5">
+        <span class="font-serif text-2xl font-bold text-ink tabular-nums"><?= number_format($hitung['total_luas'], 1, ',', '.') ?></span>
+        <span class="text-xs text-ink-muted">/ <?= $luasSk > 0 ? number_format($luasSk, 1, ',', '.') . ' Ha' : '- Ha' ?></span>
+      </div>
+      <div class="text-[11px] mt-1 <?= $hitung['lebih_luas'] > 0 ? 'text-audit-revisi font-semibold' : 'text-audit-valid' ?>">
+        <?= $hitung['lebih_luas'] > 0 ? "⚠️ {$hitung['lebih_luas']} petani > 2 Ha" : "✓ Maks 2 Ha/org aman" ?>
+      </div>
+    </div>
+
+    <div class="bg-white p-4">
       <div class="text-[11px] font-semibold <?= $jmlMasalah > 0 ? 'text-audit-revisi' : 'text-audit-valid' ?> uppercase tracking-wider">
         <span>Status Diskrepansi</span>
       </div>
@@ -161,7 +180,7 @@ wizard(3);
         <span class="text-xs text-ink-muted">perlu atensi</span>
       </div>
       <div class="text-[11px] text-ink-muted mt-1 leading-tight">
-        <?= $hitung['tidak'] ?> belum SK · <?= $hitung['luar'] ?> luar peta areal
+        <?= $hitung['tidak'] ?> belum SK · <?= $hitung['luar'] ?> luar peta<?= $hitung['lebih_luas'] > 0 ? " · {$hitung['lebih_luas']} > 2 Ha" : '' ?>
       </div>
     </div>
   </div>
@@ -268,6 +287,9 @@ wizard(3);
           <option value="semua">Semua Usulan (<?= count($rows) ?>)</option>
           <option value="tidak-sk">Belum Sesuai SK PS (<?= $hitung['tidak'] ?>)</option>
           <option value="luar">Luar Peta PS (<?= $hitung['luar'] ?>)</option>
+          <?php if ($hitung['lebih_luas'] > 0): ?>
+          <option value="lebih-luas">Luas &gt; 2 Ha (<?= $hitung['lebih_luas'] ?>)</option>
+          <?php endif; ?>
           <option value="bermasalah">Semua Masalah (<?= $jmlMasalah ?>)</option>
         </select>
       </div>
@@ -289,9 +311,10 @@ wizard(3);
           <th class="px-3 py-2.5 text-center font-semibold uppercase tracking-wider w-12 text-[11px]">No</th>
           <th class="px-3 py-2.5 text-left font-semibold uppercase tracking-wider text-[11px]">Nama Pemohon</th>
           <th class="px-3 py-2.5 text-left font-semibold uppercase tracking-wider text-[11px]">NIK</th>
+          <th class="px-3 py-2.5 text-right font-semibold uppercase tracking-wider text-[11px] w-24">Luas Usulan</th>
           <th class="px-3 py-2.5 text-center font-semibold uppercase tracking-wider text-[11px]">Status SK PS</th>
           <th class="px-3 py-2.5 text-center font-semibold uppercase tracking-wider text-[11px]">Posisi Spasial</th>
-          <th class="px-3 py-2.5 text-left font-semibold uppercase tracking-wider text-[11px] min-w-[280px]">Catatan Verifikator</th>
+          <th class="px-3 py-2.5 text-left font-semibold uppercase tracking-wider text-[11px] min-w-[260px]">Catatan Verifikator</th>
           <th class="px-2 py-2.5 text-center font-semibold uppercase tracking-wider w-14 text-[11px]">Sorot</th>
           <th class="px-2 py-2.5 text-center font-semibold uppercase tracking-wider w-20 text-[11px]">Koreksi</th>
         </tr>
@@ -300,13 +323,15 @@ wizard(3);
       <?php foreach ($rows as $idx => $r):
         $dsSk = ($r['status_sk'] ?? '') === 'Sesuai SK PS' ? 'ok' : 'tidak';
         $dsKo = ($r['status_koordinat'] ?? '') === 'Dalam Peta PS' ? 'dalam' : 'luar';
+        $rLuas = $r['luas_lahan'] !== null ? (float)$r['luas_lahan'] : null;
+        $dsLuas = ($rLuas !== null && $rLuas > 2.0) ? 'lebih' : 'ok';
         $rowBg = $idx % 2 === 0 ? 'bg-white' : 'bg-[#FAF8F5]';
       ?>
         <tr class="tr-petani <?= $rowBg ?> hairline-row"
           id="baris-<?= (int)$r['id'] ?>"
           data-uid="<?= (int)$r['id'] ?>"
-          data-sk="<?= $dsSk ?>" data-ko="<?= $dsKo ?>" data-cari="<?= e(mb_strtolower(($r['nama'] ?? '') . ' ' . ($r['nik'] ?? ''), 'UTF-8')) ?>"
-          x-show="(filter === 'semua' || (filter === 'tidak-sk' && $el.dataset.sk !== 'ok') || (filter === 'luar' && $el.dataset.ko !== 'dalam') || (filter === 'bermasalah' && ($el.dataset.sk !== 'ok' || $el.dataset.ko !== 'dalam'))) && $el.dataset.cari.includes(cari.toLowerCase())">
+          data-sk="<?= $dsSk ?>" data-ko="<?= $dsKo ?>" data-luas="<?= $dsLuas ?>" data-cari="<?= e(mb_strtolower(($r['nama'] ?? '') . ' ' . ($r['nik'] ?? ''), 'UTF-8')) ?>"
+          x-show="(filter === 'semua' || (filter === 'tidak-sk' && $el.dataset.sk !== 'ok') || (filter === 'luar' && $el.dataset.ko !== 'dalam') || (filter === 'lebih-luas' && $el.dataset.luas === 'lebih') || (filter === 'bermasalah' && ($el.dataset.sk !== 'ok' || $el.dataset.ko !== 'dalam' || $el.dataset.luas === 'lebih'))) && $el.dataset.cari.includes(cari.toLowerCase())">
           <td class="px-3 py-2 text-center text-ink-muted tabular-nums">
             <?= e($r['no_urut'] ?? ($idx + 1)) ?>
           </td>
@@ -315,6 +340,18 @@ wizard(3);
           </td>
           <td class="px-3 py-2 font-mono text-[11px] text-ink-muted">
             <?= e($r['nik'] ?? '-') ?>
+          </td>
+          <td class="px-3 py-2 text-right font-mono text-[11px] tabular-nums">
+            <?php if ($rLuas !== null): ?>
+              <span class="<?= $rLuas > 2.0 ? 'font-bold text-audit-revisi bg-red-50 border border-red-200 px-1.5 py-0.5 rounded' : 'text-ink font-semibold' ?>">
+                <?= number_format($rLuas, 2, ',', '.') ?> Ha
+              </span>
+              <?php if ($rLuas > 2.0): ?>
+                <div class="text-[9px] text-audit-revisi font-bold uppercase leading-tight mt-0.5">&gt; 2 Ha (Melebihi)</div>
+              <?php endif; ?>
+            <?php else: ?>
+              <span class="text-ink-faint">—</span>
+            <?php endif; ?>
           </td>
           <td class="px-3 py-2 text-center">
             <?= badge_sk((string)($r['status_sk'] ?? '')) ?>
@@ -361,7 +398,7 @@ wizard(3);
       <?php endforeach; ?>
       <?php if (!$rows): ?>
         <tr>
-          <td colspan="7" class="px-4 py-8 text-center text-ink-muted">
+          <td colspan="9" class="px-4 py-8 text-center text-ink-muted">
             Belum ada data usulan untuk kasus ini.
           </td>
         </tr>
