@@ -48,13 +48,13 @@ if errorlevel 1 (
     exit /b 1
 )
 
-:: 2. Git Pull / Clone di Server via SSH
+:: 2. Git Pull / Clone di Server via SSH & Jalankan Migrasi
 echo.
-echo [2/2] Memperbarui kode di server via SSH...
+echo [2/2] Memperbarui kode dan menjalankan migrasi database di server via SSH...
 echo *(Jika diminta password SSH, masukkan password akun server)*
 echo.
 
-ssh -p %SERVER_PORT% %SERVER_USER%@%SERVER_IP% "cd /d %PARENT_DIR% && (if exist %PROJECT_DIR%\.git (echo [SERVER] Repo ditemukan. Menjalankan git pull... && cd %PROJECT_DIR% && %REMOTE_GIT% pull origin %BRANCH%) else (echo [SERVER] Mengkloning repo baru ke %PARENT_DIR%\%PROJECT_DIR%... && %REMOTE_GIT% clone %REPO_URL% %PROJECT_DIR%))"
+ssh -p %SERVER_PORT% %SERVER_USER%@%SERVER_IP% "cd /d %PARENT_DIR% && (if exist %PROJECT_DIR%\.git (echo [SERVER] Repo ditemukan. Menjalankan git pull... && cd %PROJECT_DIR% && %REMOTE_GIT% pull origin %BRANCH%) else (echo [SERVER] Mengkloning repo baru ke %PARENT_DIR%\%PROJECT_DIR%... && %REMOTE_GIT% clone %REPO_URL% %PROJECT_DIR% && cd %PROJECT_DIR%)) && (if exist migrasi.php (php migrasi.php 2>nul || (for /d %%p in (C:\laragon\bin\php\php*) do if exist %%p\php.exe (%%p\php.exe migrasi.php))))"
 
 if errorlevel 1 (
     echo.

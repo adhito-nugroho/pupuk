@@ -85,6 +85,26 @@ if (!is_dir($baDir)) {
 } else {
     $hasil[] = ['status' => 'skip', 'msg' => "Folder uploads/berita_acara sudah ada — dilewati."];
 }
+
+// Jika dijalankan dari CLI (misalnya saat git deploy)
+if (php_sapi_name() === 'cli') {
+    echo "\n=== [SERVER] MENJALANKAN MIGRASI DATABASE ===\n";
+    foreach ($hasil as $item) {
+        $badge = match($item['status']) {
+            'ok'    => '  [OK]   ',
+            'skip'  => '  [SKIP] ',
+            default => '  [ERR]  ',
+        };
+        echo $badge . $item['msg'] . "\n";
+    }
+    if ($ada_error) {
+        echo ">>> Migrasi selesai dengan beberapa error.\n\n";
+        exit(1);
+    } else {
+        echo ">>> Migrasi database sukses!\n\n";
+        exit(0);
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">

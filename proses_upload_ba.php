@@ -59,6 +59,22 @@ try {
 
     $pdo = db();
 
+    // Auto-migration fallback jika kolom belum ada di database server
+    try {
+        $pdo->query('SELECT berkas_ba, nama_file_ba, tgl_ba FROM laporan LIMIT 0');
+    } catch (Throwable $eMissing) {
+        $cols = [
+            'berkas_ba'    => 'VARCHAR(512) DEFAULT NULL',
+            'nama_file_ba' => 'VARCHAR(255) DEFAULT NULL',
+            'tgl_ba'       => 'DATE DEFAULT NULL'
+        ];
+        foreach ($cols as $colName => $colDef) {
+            try {
+                $pdo->exec("ALTER TABLE `laporan` ADD COLUMN `$colName` $colDef");
+            } catch (Throwable $ignored) {}
+        }
+    }
+
     // Pastikan KTH ada
     $kthRow = $pdo->prepare('SELECT id FROM kth WHERE id = ?');
     $kthRow->execute([$kthId]);
