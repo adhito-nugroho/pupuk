@@ -345,19 +345,24 @@ $baTgl   = $lap['tgl_ba']       ?? null;
     this.pesanOk = null;
     const fd = new FormData(form);
     fetch('proses_upload_ba.php', { method: 'POST', body: fd })
-      .then(r => r.json())
-      .then(j => {
+      .then(async r => {
+        let j;
+        try {
+          j = await r.json();
+        } catch (err) {
+          throw new Error('Respon server tidak valid (HTTP ' + r.status + ')');
+        }
         this.uploading = false;
-        if (j.ok) {
+        if (j && j.ok) {
           this.pesanOk = '✅ ' + j.msg;
           setTimeout(() => location.reload(), 1200);
         } else {
-          this.pesanError = '⚠️ ' + j.msg;
+          this.pesanError = '⚠️ ' + ((j && j.msg) ? j.msg : 'Gagal mengunggah file.');
         }
       })
-      .catch(() => {
+      .catch(err => {
         this.uploading = false;
-        this.pesanError = 'Gagal menghubungi server.';
+        this.pesanError = '⚠️ ' + (err.message || 'Gagal menghubungi server.');
       });
   }
 }">
