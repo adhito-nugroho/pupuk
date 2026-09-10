@@ -313,3 +313,114 @@ function wizard(int $step): void {
     echo '  </div>';
     echo '</div>';
 }
+
+/**
+ * Sub-Navbar Navigasi Terpadu Kasus KTH & Switcher Versi Usulan.
+ */
+function layout_kth_subnav(array $kth, string $aktif, int $versiAktif = 1, array $daftarVersi = []): void {
+    $kthId = (int)($kth['id'] ?? 0);
+    $namaKth = $kth['nama_kth'] ?? 'KTH';
+    $nomorSk = $kth['nomor_sk'] ?? '-';
+    $luasSk  = !empty($kth['luas_areal']) ? number_format((float)$kth['luas_areal'], 2, ',', '.') . ' Ha' : '-';
+    $vUtama  = (int)($kth['versi_aktif'] ?? 1);
+
+    // Cari info versi terpilih
+    $infoVersiTerpilih = null;
+    foreach ($daftarVersi as $v) {
+        if ((int)$v['versi_ke'] === $versiAktif) {
+            $infoVersiTerpilih = $v;
+            break;
+        }
+    }
+    ?>
+    <div class="doc-card mb-6 rounded-md overflow-hidden fade-in">
+      <!-- Header Identitas Kasus KTH -->
+      <div class="p-4 bg-gradient-to-r from-forest-950 via-forest-900 to-forest-800 text-white flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <a href="index.php" title="Kembali ke Buku Register" class="w-8 h-8 rounded bg-white/10 hover:bg-white/20 border border-white/15 flex items-center justify-center text-white text-xs font-bold transition-colors">
+            ←
+          </a>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-mono font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 uppercase">KASUS #<?= $kthId ?></span>
+              <h2 class="font-serif font-bold text-lg text-white leading-tight inline-block"><?= e($namaKth) ?></h2>
+            </div>
+            <div class="text-[11px] text-emerald-100/70 flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5">
+              <span>SK: <b class="text-white"><?= e($nomorSk) ?></b></span>
+              <span class="text-emerald-500/50">·</span>
+              <span>Luas SK: <b class="text-white"><?= $luasSk ?></b></span>
+              <?php if ($vUtama > 1): ?>
+              <span class="text-emerald-500/50">·</span>
+              <span class="text-amber-300 font-semibold">Tersedia <?= count($daftarVersi) ?> Putaran Usulan</span>
+              <?php endif; ?>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pemilih Versi Usulan (Version Switcher) -->
+        <?php if (!empty($daftarVersi)): ?>
+        <div class="flex items-center gap-2 bg-black/25 px-3 py-1.5 rounded border border-white/10 text-xs">
+          <label class="text-[11px] font-medium text-emerald-200/80 flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Data Usulan:
+          </label>
+          <select class="bg-forest-950 text-white font-semibold text-xs rounded px-2.5 py-1 border border-emerald-500/30 focus:outline-none focus:border-emerald-400 cursor-pointer"
+                  onchange="const u = new URL(window.location.href); u.searchParams.set('v', this.value); window.location.href = u.toString();">
+            <?php foreach ($daftarVersi as $v): 
+                $vNum = (int)$v['versi_ke'];
+                $isSel = $vNum === $versiAktif;
+                $isMain = $vNum === $vUtama;
+                $label = 'v' . $vNum . ' — ' . ($v['label_versi'] ?: ('Versi ' . $vNum)) . ($isMain ? ' (Aktif)' : '');
+            ?>
+              <option value="<?= $vNum ?>" <?= $isSel ? 'selected' : '' ?>>
+                <?= e($label) ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+          <?php if ($versiAktif !== $vUtama): ?>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold" title="Anda sedang melihat data historis versi terdahulu">
+              Riwayat (v<?= $versiAktif ?>)
+            </span>
+          <?php endif; ?>
+        </div>
+        <?php endif; ?>
+      </div>
+
+      <!-- Tab Navigasi Modul -->
+      <div class="bg-[#FAF8F3] border-t border-kadaster-border px-3 py-1 flex flex-wrap items-center justify-between gap-2 text-xs font-semibold">
+        <div class="flex flex-wrap items-center gap-1">
+          <?php
+            $vParam = $versiAktif > 1 ? '&v=' . $versiAktif : '';
+            $tabs = [
+              'hasil'      => ['href' => "hasil.php?kth_id={$kthId}{$vParam}",      'icon' => '📊', 'label' => 'Hasil Verifikasi'],
+              'sk'         => ['href' => "konfirmasi_sk.php?kth_id={$kthId}",        'icon' => '👥', 'label' => 'Anggota SK'],
+              'peta'       => ['href' => "peta.php?kth_id={$kthId}{$vParam}",       'icon' => '🗺️', 'label' => 'Peta Spasial'],
+              'laporan'    => ['href' => "laporan.php?kth_id={$kthId}{$vParam}",    'icon' => '📝', 'label' => 'Berita Acara & Laporan'],
+              'perbaikan'  => ['href' => "perbaikan.php?kth_id={$kthId}",           'icon' => '🔄', 'label' => 'Riwayat & Upload Perbaikan'],
+            ];
+
+            foreach ($tabs as $key => $tab):
+              $isTabActive = $aktif === $key;
+          ?>
+            <a href="<?= $tab['href'] ?>" 
+               class="px-3 py-2 rounded-t transition-all inline-flex items-center gap-1.5 border-b-2 <?= $isTabActive 
+                ? 'border-forest-900 text-forest-900 bg-white font-bold shadow-sm' 
+                : 'border-transparent text-ink-muted hover:text-forest-900 hover:bg-white/60' ?>">
+              <span><?= $tab['icon'] ?></span>
+              <span><?= $tab['label'] ?></span>
+            </a>
+          <?php endforeach; ?>
+        </div>
+
+        <div class="flex items-center gap-2 py-1">
+          <a href="cetak.php?kth_id=<?= $kthId ?><?= $vParam ?>" target="_blank" rel="noopener"
+             class="btn-kadaster px-3 py-1.5 text-xs inline-flex items-center gap-1.5 font-medium text-forest-900 hover:bg-white">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+            <span>Cetak Lembar Hasil</span>
+          </a>
+        </div>
+      </div>
+    </div>
+    <?php
+}
+
