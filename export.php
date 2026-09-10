@@ -7,5 +7,6 @@ require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/lib/export_xlsx.php';
 
 $kthId = (int)($_GET['kth_id'] ?? 0);
+$vParam = (int)($_GET['v'] ?? 0);
 if (!$kthId) { http_response_code(400); echo 'kth_id wajib.'; exit; }
-export_laporan_excel(db(), $kthId);
+export_laporan_excel(db(), $kthId, null, $vParam);

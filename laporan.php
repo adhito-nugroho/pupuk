@@ -7,11 +7,16 @@ require_once __DIR__ . '/lib/layout.php';
 require_once __DIR__ . '/lib/verify.php';
 
 $kthId = (int)($_GET['kth_id'] ?? 0);
+$vParam = isset($_GET['v']) ? (int)$_GET['v'] : null;
+
 $pdo = db();
 $kth = $pdo->prepare('SELECT * FROM kth WHERE id = ?');
 $kth->execute([$kthId]);
 $k = $kth->fetch();
 if (!$k) { flash_set('error', 'Kasus tidak ditemukan.'); header('Location: index.php'); exit; }
+
+$daftarVersi = ambil_daftar_versi($pdo, $kthId);
+$versiAktif = ambil_versi_terpilih($k, $vParam);
 
 $st = $pdo->prepare('SELECT * FROM laporan WHERE kth_id = ? ORDER BY id DESC LIMIT 1');
 $st->execute([$kthId]);
@@ -21,12 +26,12 @@ $h = $pdo->prepare('SELECT COUNT(*) total,
   SUM(status_sk = "Sesuai SK PS") sesuai,
   SUM(status_sk != "Sesuai SK PS") tidak,
   SUM(status_koordinat = "Dalam Peta PS") dalam,
-  SUM(status_koordinat != "Dalam Peta PS") luar FROM hasil_verifikasi WHERE kth_id = ?');
-$h->execute([$kthId]);
+  SUM(status_koordinat != "Dalam Peta PS") luar FROM hasil_verifikasi WHERE kth_id = ? AND versi_ke = ?');
+$h->execute([$kthId, $versiAktif]);
 $live = $h->fetch() ?: ['total' => 0, 'sesuai' => 0, 'tidak' => 0, 'dalam' => 0, 'luar' => 0];
 
-$qLuas = $pdo->prepare('SELECT SUM(luas_lahan) AS total_luas, COUNT(CASE WHEN luas_lahan > 2.0 THEN 1 END) AS lebih_2ha FROM usulan_pupuk WHERE kth_id = ?');
-$qLuas->execute([$kthId]);
+$qLuas = $pdo->prepare('SELECT SUM(luas_lahan) AS total_luas, COUNT(CASE WHEN luas_lahan > 2.0 THEN 1 END) AS lebih_2ha FROM usulan_pupuk WHERE kth_id = ? AND versi_ke = ?');
+$qLuas->execute([$kthId, $versiAktif]);
 $rowLuas = $qLuas->fetch() ?: [];
 $totalLuasUsulan = (float)($rowLuas['total_luas'] ?? 0.0);
 $lebih2haCount = (int)($rowLuas['lebih_2ha'] ?? 0);
@@ -55,14 +60,16 @@ $pctPeta = $hitung['total'] > 0 ? round($hitung['dalam'] / $hitung['total'] * 10
 $rekomFinal = $lap['rekomendasi'] ?? $rekomAuto;
 $isSesuaiSemua = ($rekomFinal === 'Dapat Ditindaklanjuti');
 
-$qLoc = $pdo->prepare('SELECT desa, kecamatan FROM usulan_pupuk WHERE kth_id = ? AND (desa IS NOT NULL AND desa != "") LIMIT 1');
-$qLoc->execute([$kthId]);
+$qLoc = $pdo->prepare('SELECT desa, kecamatan FROM usulan_pupuk WHERE kth_id = ? AND versi_ke = ? AND (desa IS NOT NULL AND desa != "") LIMIT 1');
+$qLoc->execute([$kthId, $versiAktif]);
 $loc = $qLoc->fetch() ?: [];
 $namaDesa = !empty($loc['desa']) ? $loc['desa'] : (!empty($k['desa']) ? $k['desa'] : '');
 $namaKec  = !empty($loc['kecamatan']) ? $loc['kecamatan'] : (!empty($k['kecamatan']) ? $k['kecamatan'] : '');
 
 layout_head('Berita Acara Rekomendasi — ' . ($k['nama_kth'] ?? ''));
-wizard(4);
+
+// Sub-Navbar Navigasi Terpadu
+layout_kth_subnav($k, 'laporan', $versiAktif, $daftarVersi);
 
 // Ambil info BA dari laporan terbaru
 $baFile  = $lap['berkas_ba']   ?? null;

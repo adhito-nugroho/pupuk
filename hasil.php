@@ -6,17 +6,23 @@ require_once __DIR__ . '/lib/helpers.php';
 require_once __DIR__ . '/lib/layout.php';
 
 $kthId = (int)($_GET['kth_id'] ?? 0);
+$vParam = isset($_GET['v']) ? (int)$_GET['v'] : null;
 $pdo = db();
 $kth = $pdo->prepare('SELECT * FROM kth WHERE id = ?');
 $kth->execute([$kthId]);
 $k = $kth->fetch();
 if (!$k) { flash_set('error', 'Kasus tidak ditemukan.'); header('Location: index.php'); exit; }
 
+$daftarVersi = ambil_daftar_versi($pdo, $kthId);
+$versiAktif = ambil_versi_terpilih($k, $vParam);
+
 $q = $pdo->prepare('SELECT u.*, h.status_sk, h.status_koordinat, h.catatan, h.id AS hasil_id
-  FROM usulan_pupuk u LEFT JOIN hasil_verifikasi h ON h.usulan_id = u.id
-  WHERE u.kth_id = ? ORDER BY COALESCE(u.no_urut, u.id)');
-$q->execute([$kthId]);
-$rows = $q->fetchAll();$hitung = ['total' => count($rows), 'sesuai' => 0, 'tidak' => 0, 'dalam' => 0, 'luar' => 0, 'lebih_luas' => 0, 'total_luas' => 0.0];
+  FROM usulan_pupuk u LEFT JOIN hasil_verifikasi h ON (h.usulan_id = u.id AND h.versi_ke = u.versi_ke)
+  WHERE u.kth_id = ? AND u.versi_ke = ? ORDER BY COALESCE(u.no_urut, u.id)');
+$q->execute([$kthId, $versiAktif]);
+$rows = $q->fetchAll();
+
+$hitung = ['total' => count($rows), 'sesuai' => 0, 'tidak' => 0, 'dalam' => 0, 'luar' => 0, 'lebih_luas' => 0, 'total_luas' => 0.0];
 foreach ($rows as $r) {
     if (($r['status_sk'] ?? '') === 'Sesuai SK PS') $hitung['sesuai']++; else $hitung['tidak']++;
     if (($r['status_koordinat'] ?? '') === 'Dalam Peta PS') $hitung['dalam']++; else $hitung['luar']++;
@@ -30,13 +36,16 @@ $luasSk = !empty($k['luas_areal']) ? (float)$k['luas_areal'] : 0.0;
 $pctLuasSk = $luasSk > 0 ? round(($hitung['total_luas'] / $luasSk) * 100, 1) : 0;
 $jmlMasalah = $hitung['tidak'] + $hitung['luar'] + $hitung['lebih_luas'];
 
-$qLoc = $pdo->prepare('SELECT desa, kecamatan FROM usulan_pupuk WHERE kth_id = ? AND (desa IS NOT NULL AND desa != "") LIMIT 1');
-$qLoc->execute([$kthId]);
+$qLoc = $pdo->prepare('SELECT desa, kecamatan FROM usulan_pupuk WHERE kth_id = ? AND versi_ke = ? AND (desa IS NOT NULL AND desa != "") LIMIT 1');
+$qLoc->execute([$kthId, $versiAktif]);
 $loc = $qLoc->fetch() ?: [];
 $namaDesa = !empty($loc['desa']) ? $loc['desa'] : (!empty($k['desa']) ? $k['desa'] : '');
 $namaKec  = !empty($loc['kecamatan']) ? $loc['kecamatan'] : (!empty($k['kecamatan']) ? $k['kecamatan'] : '');
 
 layout_head('Hasil Verifikasi Spasial & Yuridis — ' . ($k['nama_kth'] ?? ''));
+
+// Sub-Navbar Navigasi Terpadu Kasus KTH
+layout_kth_subnav($k, 'hasil', $versiAktif, $daftarVersi);
 
 // Leaflet CSS
 echo '<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">';
@@ -60,8 +69,6 @@ echo '<style>
 .input-koord.valid { border-color: #1D5C3A; background: #F0FDF4; }
 .input-koord.invalid { border-color: #9E2A2B; background: #FDF2F2; }
 </style>';
-
-wizard(3);
 ?>
 
 <!-- ═══ HEADER KASUS & BILAH AUDIT SPASIAL ═══ -->

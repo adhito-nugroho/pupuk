@@ -29,8 +29,11 @@ foreach ($rows as $r) {
     }
 }
 
+$daftarVersi = ambil_daftar_versi($pdo, $kthId);
+$versiAktif = ambil_versi_terpilih($k, isset($_GET['v']) ? (int)$_GET['v'] : null);
+
 layout_head('Konfirmasi Anggota SK — ' . $k['nama_kth']);
-wizard(2);
+layout_kth_subnav($k, 'sk', $versiAktif, $daftarVersi);
 ?>
 
 <!-- ═══ Header Dokumen Verifikasi ═══ -->

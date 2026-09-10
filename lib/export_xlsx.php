@@ -8,11 +8,16 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 
-function build_laporan_spreadsheet(PDO $pdo, int $kthId, ?array $laporan = null): array {
+function build_laporan_spreadsheet(PDO $pdo, int $kthId, ?array $laporan = null, int $versiKe = 0): array {
     $kth = $pdo->prepare('SELECT * FROM kth WHERE id = ?');
     $kth->execute([$kthId]);
     $k = $kth->fetch();
     if (!$k) throw new RuntimeException('Data KTH tidak ditemukan.');
+
+    if ($versiKe <= 0) {
+        $versiKe = (int)($k['versi_aktif'] ?? 1);
+        if ($versiKe <= 0) $versiKe = 1;
+    }
 
     if ($laporan === null) {
         $st = $pdo->prepare('SELECT * FROM laporan WHERE kth_id = ? ORDER BY id DESC LIMIT 1');
@@ -21,13 +26,13 @@ function build_laporan_spreadsheet(PDO $pdo, int $kthId, ?array $laporan = null)
     }
 
     $q = $pdo->prepare('SELECT u.no_urut, u.nama, u.nik, u.luas_lahan, h.status_sk, h.status_koordinat, h.catatan
-        FROM usulan_pupuk u LEFT JOIN hasil_verifikasi h ON h.usulan_id = u.id
-        WHERE u.kth_id = ? ORDER BY COALESCE(u.no_urut, u.id)');
-    $q->execute([$kthId]);
+        FROM usulan_pupuk u LEFT JOIN hasil_verifikasi h ON (h.usulan_id = u.id AND h.versi_ke = u.versi_ke)
+        WHERE u.kth_id = ? AND u.versi_ke = ? ORDER BY COALESCE(u.no_urut, u.id)');
+    $q->execute([$kthId, $versiKe]);
     $rows = $q->fetchAll();
 
-    $qLuas = $pdo->prepare('SELECT SUM(luas_lahan) AS total_luas, COUNT(CASE WHEN luas_lahan > 2.0 THEN 1 END) AS lebih_2ha FROM usulan_pupuk WHERE kth_id = ?');
-    $qLuas->execute([$kthId]);
+    $qLuas = $pdo->prepare('SELECT SUM(luas_lahan) AS total_luas, COUNT(CASE WHEN luas_lahan > 2.0 THEN 1 END) AS lebih_2ha FROM usulan_pupuk WHERE kth_id = ? AND versi_ke = ?');
+    $qLuas->execute([$kthId, $versiKe]);
     $rowLuas = $qLuas->fetch() ?: [];
     $totalLuasUsulan = (float)($rowLuas['total_luas'] ?? 0.0);
     $lebih2haCount = (int)($rowLuas['lebih_2ha'] ?? 0);
@@ -149,8 +154,8 @@ function build_laporan_spreadsheet(PDO $pdo, int $kthId, ?array $laporan = null)
     return [$ss, $fname];
 }
 
-function export_laporan_excel(PDO $pdo, int $kthId, ?array $laporan = null): void {
-    [$ss, $fname] = build_laporan_spreadsheet($pdo, $kthId, $laporan);
+function export_laporan_excel(PDO $pdo, int $kthId, ?array $laporan = null, int $versiKe = 0): void {
+    [$ss, $fname] = build_laporan_spreadsheet($pdo, $kthId, $laporan, $versiKe);
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     header('Content-Disposition: attachment; filename="' . $fname . '"');
     header('Cache-Control: max-age=0');

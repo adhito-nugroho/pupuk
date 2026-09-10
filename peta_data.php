@@ -12,9 +12,19 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 
 $kthId = (int)($_GET['kth_id'] ?? 0);
+$vParam = isset($_GET['v']) ? (int)$_GET['v'] : null;
 if (!$kthId) { http_response_code(400); echo json_encode(['error'=>'kth_id diperlukan']); exit; }
 
 $pdo = db();
+
+$versiAktif = 1;
+if ($vParam && $vParam > 0) {
+    $versiAktif = $vParam;
+} else {
+    $stV = $pdo->prepare('SELECT versi_aktif FROM kth WHERE id = ?');
+    $stV->execute([$kthId]);
+    $versiAktif = (int)($stV->fetchColumn() ?: 1);
+}
 
 // ─── 1. Polygon PS ──────────────────────────────────────────────────────────
 $polyRow = $pdo->prepare('SELECT geometry_json FROM poligon_ps WHERE kth_id = ? ORDER BY id DESC LIMIT 1');
@@ -43,11 +53,11 @@ $q = $pdo->prepare(
             u.koordinat_x, u.koordinat_y,
             h.status_sk, h.status_koordinat, h.catatan, h.kemiripan_nama, h.nama_mirip_sk
      FROM usulan_pupuk u
-     LEFT JOIN hasil_verifikasi h ON h.usulan_id = u.id
-     WHERE u.kth_id = ?
+     LEFT JOIN hasil_verifikasi h ON (h.usulan_id = u.id AND h.versi_ke = u.versi_ke)
+     WHERE u.kth_id = ? AND u.versi_ke = ?
      ORDER BY COALESCE(u.no_urut, u.id)'
 );
-$q->execute([$kthId]);
+$q->execute([$kthId, $versiAktif]);
 $rows = $q->fetchAll(PDO::FETCH_ASSOC);
 
 $features = [];
