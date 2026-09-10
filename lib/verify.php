@@ -3,7 +3,15 @@
 require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/parse_shp.php';
 
-function verifikasi_satu_kth(PDO $pdo, int $kthId): array {
+function verifikasi_satu_kth(PDO $pdo, int $kthId, int $versiKe = 0): array {
+    if ($versiKe <= 0) {
+        $stV = $pdo->prepare('SELECT versi_aktif FROM kth WHERE id = ?');
+        $stV->execute([$kthId]);
+        $rowV = $stV->fetch();
+        $versiKe = (int)($rowV['versi_aktif'] ?? 1);
+        if ($versiKe <= 0) $versiKe = 1;
+    }
+
     $sk = $pdo->prepare('SELECT * FROM sk_anggota WHERE kth_id = ?');
     $sk->execute([$kthId]);
     $daftarSK = $sk->fetchAll();
@@ -18,13 +26,13 @@ function verifikasi_satu_kth(PDO $pdo, int $kthId): array {
     $polyRow = $poly->fetch();
     $rings = $polyRow ? rings_dari_geometry_json((string)$polyRow['geometry_json']) : [];
 
-    $us = $pdo->prepare('SELECT * FROM usulan_pupuk WHERE kth_id = ? ORDER BY COALESCE(no_urut, id)');
-    $us->execute([$kthId]);
+    $us = $pdo->prepare('SELECT * FROM usulan_pupuk WHERE kth_id = ? AND versi_ke = ? ORDER BY COALESCE(no_urut, id)');
+    $us->execute([$kthId, $versiKe]);
     $usulan = $us->fetchAll();
 
-    // Hapus hasil lama, hitung ulang
-    $pdo->prepare('DELETE FROM hasil_verifikasi WHERE kth_id = ?')->execute([$kthId]);
-    $ins = $pdo->prepare('INSERT INTO hasil_verifikasi (usulan_id, kth_id, status_sk, status_koordinat, catatan, kemiripan_nama, nama_mirip_sk) VALUES (?,?,?,?,?,?,?)');
+    // Hapus hasil lama untuk versi ini, hitung ulang
+    $pdo->prepare('DELETE FROM hasil_verifikasi WHERE kth_id = ? AND versi_ke = ?')->execute([$kthId, $versiKe]);
+    $ins = $pdo->prepare('INSERT INTO hasil_verifikasi (usulan_id, kth_id, versi_ke, status_sk, status_koordinat, catatan, kemiripan_nama, nama_mirip_sk) VALUES (?,?,?,?,?,?,?,?)');
 
     $cSesuai = 0; $cTidak = 0; $cDalam = 0; $cLuar = 0; $cLebihLuas = 0;
     $totalLuasUsulan = 0.0;
@@ -83,11 +91,24 @@ function verifikasi_satu_kth(PDO $pdo, int $kthId): array {
             $catatan = implode(' ', $catatanPieces);
         }
 
-        $ins->execute([$u['id'], $kthId, $statusSK, $statusKoord, trim($catatan), $pct, $namaMirip]);
+        $ins->execute([$u['id'], $kthId, $versiKe, $statusSK, $statusKoord, trim($catatan), $pct, $namaMirip]);
     }
 
     $rekom = ($cTidak === 0 && $cLuar === 0 && $cLebihLuas === 0) ? 'Dapat Ditindaklanjuti' : 'Perlu Revisi';
+
+    // Sinkronkan ringkasan hasil ke tabel kth_versi_usulan jika ada
+    $updV = $pdo->prepare('
+        UPDATE kth_versi_usulan 
+        SET total_petani = ?, total_luas = ?, jumlah_sesuai_sk = ?, jumlah_tidak_sesuai_sk = ?, 
+            jumlah_dalam_peta = ?, jumlah_luar_peta = ?, rekomendasi = ?
+        WHERE kth_id = ? AND versi_ke = ?
+    ');
+    $updV->execute([
+        count($usulan), $totalLuasUsulan, $cSesuai, $cTidak, $cDalam, $cLuar, $rekom, $kthId, $versiKe
+    ]);
+
     return [
+        'versi_ke' => $versiKe,
         'total' => count($usulan), 'sesuai' => $cSesuai, 'tidak' => $cTidak,
         'dalam' => $cDalam, 'luar' => $cLuar, 'lebih_luas' => $cLebihLuas,
         'total_luas' => $totalLuasUsulan, 'rekomendasi' => $rekom,

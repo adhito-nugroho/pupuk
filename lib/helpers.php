@@ -116,3 +116,37 @@ function flash_take(): array {
     $_SESSION['flash'] = [];
     return $f;
 }
+
+/**
+ * Ambil seluruh riwayat versi usulan untuk suatu KTH (diurutkan dari versi terbaru).
+ */
+function ambil_daftar_versi(PDO $pdo, int $kthId): array {
+    $st = $pdo->prepare('SELECT * FROM kth_versi_usulan WHERE kth_id = ? ORDER BY versi_ke DESC');
+    $st->execute([$kthId]);
+    $list = $st->fetchAll();
+    if (empty($list)) {
+        return [[
+            'id' => 0,
+            'kth_id' => $kthId,
+            'versi_ke' => 1,
+            'label_versi' => 'Usulan Awal (v1)',
+            'nama_file_asli' => 'usulan_awal.xlsx',
+            'path_file' => '',
+            'total_petani' => 0,
+            'dibuat_pada' => date('Y-m-d H:i:s'),
+        ]];
+    }
+    return $list;
+}
+
+/**
+ * Dapatkan nomor versi aktif / yang diminta oleh request.
+ */
+function ambil_versi_terpilih(array $kth, ?int $vParam = null): int {
+    if ($vParam !== null && $vParam > 0) {
+        return $vParam;
+    }
+    $vAktif = (int)($kth['versi_aktif'] ?? 1);
+    return $vAktif > 0 ? $vAktif : 1;
+}
+
