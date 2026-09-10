@@ -324,8 +324,8 @@ $baTgl   = $lap['tgl_ba']       ?? null;
     const f = e.target.files[0];
     if (!f) return;
     const ext = f.name.split('.').pop().toLowerCase();
-    if (!['doc','docx'].includes(ext)) {
-      this.pesanError = 'Hanya file Word (.doc / .docx) yang diizinkan.';
+    if (!['doc','docx','xls','xlsx','pdf'].includes(ext)) {
+      this.pesanError = 'Hanya file Word (.doc, .docx), Excel (.xls, .xlsx), atau PDF (.pdf) yang diizinkan.';
       e.target.value = '';
       return;
     }
@@ -367,21 +367,38 @@ $baTgl   = $lap['tgl_ba']       ?? null;
       Lampiran Berita Acara Perbaikan
     </h3>
     <p class="text-xs text-ink-muted mt-1">
-      Upload satu file Berita Acara (<code>.docx</code>) untuk seluruh Berkas Kasus ini (<b><?= $hitung['tidak'] ?> Pemohon</b> Belum Sesuai SK PS).
+      Upload satu file Berita Acara (<code>.docx</code>, <code>.doc</code>, <code>.xlsx</code>, <code>.xls</code>, atau <code>.pdf</code>) untuk seluruh Berkas Kasus ini (<b><?= $hitung['tidak'] ?> Pemohon</b> Belum Sesuai SK PS).
       File ini menjadi dokumen pendukung perbaikan nama/NIK secara administratif.
       <span class="font-semibold text-amber-700">Data usulan asli tidak akan diubah.</span>
     </p>
   </div>
 
   <?php if ($baFile && is_file(__DIR__ . '/' . $baFile)): ?>
+  <?php
+    $baExt = strtolower(pathinfo($baFile, PATHINFO_EXTENSION));
+    $iconBg = match($baExt) {
+      'pdf' => 'bg-red-600',
+      'xls', 'xlsx' => 'bg-emerald-600',
+      default => 'bg-blue-600',
+    };
+    $fileBadge = match($baExt) {
+      'pdf' => 'PDF',
+      'xls', 'xlsx' => 'Excel',
+      'doc', 'docx' => 'Word',
+      default => strtoupper($baExt),
+    };
+  ?>
   <!-- File BA sudah ada -->
   <div class="flex flex-wrap items-center justify-between gap-4 p-4 bg-forest-50 border border-forest-200 rounded-md mb-4">
     <div class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded bg-blue-600 flex items-center justify-center flex-shrink-0">
-        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      <div class="w-10 h-10 rounded <?= $iconBg ?> flex items-center justify-center flex-shrink-0 text-white font-bold text-xs uppercase tracking-wider">
+        <?= $fileBadge ?>
       </div>
       <div>
-        <div class="font-semibold text-sm text-ink"><?= e($baNama ?? basename($baFile)) ?></div>
+        <div class="font-semibold text-sm text-ink flex items-center gap-2">
+          <span><?= e($baNama ?? basename($baFile)) ?></span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold uppercase bg-white border border-forest-200 text-forest-800"><?= $baExt ?></span>
+        </div>
         <div class="text-xs text-ink-muted flex items-center gap-2 mt-0.5">
           <?php if ($baTgl): ?>
           <span>Tanggal BA: <b><?= e(date('d M Y', strtotime($baTgl))) ?></b></span>
@@ -430,12 +447,12 @@ $baTgl   = $lap['tgl_ba']       ?? null;
       <div>
         <label class="block text-xs font-semibold text-ink mb-1.5">File Berita Acara <span class="text-audit-revisi">*</span></label>
         <div class="relative">
-          <input type="file" name="file_ba" accept=".doc,.docx" @change="upload($event)"
+          <input type="file" name="file_ba" accept=".doc,.docx,.xls,.xlsx,.pdf" @change="upload($event)"
             class="w-full border border-kadaster-border rounded px-3 py-2 text-xs bg-white text-ink focus:border-forest-900 outline-none
                    file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold
                    file:bg-forest-900 file:text-white hover:file:bg-forest-800 cursor-pointer">
         </div>
-        <p class="text-[11px] text-ink-muted mt-1">Format: .doc / .docx · Maks. 5 MB</p>
+        <p class="text-[11px] text-ink-muted mt-1">Format: Word (.doc / .docx), Excel (.xls / .xlsx), PDF (.pdf) · Maks. 5 MB</p>
         <p x-show="namaFile" class="text-[11px] text-audit-valid font-semibold mt-1" x-text="'📄 ' + namaFile"></p>
       </div>
 

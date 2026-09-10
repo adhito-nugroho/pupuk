@@ -60,7 +60,7 @@ tambah_kolom($pdo, 'hasil_verifikasi', 'dikoreksi_pada',
 // Migrasi: tabel laporan
 // ═══════════════════════════════════════════════════════
 tambah_kolom($pdo, 'laporan', 'berkas_ba',
-    "VARCHAR(512) DEFAULT NULL COMMENT 'Path file Berita Acara Word yang diupload'",
+    "VARCHAR(512) DEFAULT NULL COMMENT 'Path file Berita Acara (Word/Excel/PDF) yang diupload'",
     $hasil, $ada_error);
 
 tambah_kolom($pdo, 'laporan', 'nama_file_ba',

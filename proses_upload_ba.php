@@ -1,6 +1,6 @@
 <?php
 /**
- * proses_upload_ba.php — Handler AJAX upload Berita Acara Word (per KTH).
+ * proses_upload_ba.php — Handler AJAX upload Berita Acara (Word, Excel, PDF per KTH).
  *
  * Menerima: POST multipart { kth_id, tgl_ba } + FILE { file_ba }
  * Menyimpan file ke uploads/berita_acara/ dan mencatat path di tabel laporan.
@@ -44,8 +44,9 @@ $ukuran   = (int)$file['size'];
 $namaAsli = basename($file['name']);
 $ext      = strtolower(pathinfo($namaAsli, PATHINFO_EXTENSION));
 
-if (!in_array($ext, ['doc', 'docx'], true)) {
-    echo json_encode(['ok' => false, 'msg' => 'Hanya file Word (.doc / .docx) yang diizinkan.']);
+$allowedExts = ['doc', 'docx', 'xls', 'xlsx', 'pdf'];
+if (!in_array($ext, $allowedExts, true)) {
+    echo json_encode(['ok' => false, 'msg' => 'Hanya file Word (.doc, .docx), Excel (.xls, .xlsx), atau PDF (.pdf) yang diizinkan.']);
     exit;
 }
 
@@ -60,12 +61,13 @@ $magic  = $handle ? bin2hex(fread($handle, 4)) : '';
 if ($handle) fclose($handle);
 
 $validMime = (
-    $magic === '504b0304'               // ZIP-based (docx, odt, dll)
-    || substr($magic, 0, 8) === 'd0cf11e0' // OLE2 (doc lama)
+    $magic === '504b0304'               // ZIP-based (docx, xlsx, dll)
+    || substr($magic, 0, 8) === 'd0cf11e0' // OLE2 (doc, xls lama)
+    || $magic === '25504446'            // %PDF (pdf)
     || strlen($magic) === 0              // Fallback jika baca gagal
 );
 if (!$validMime) {
-    echo json_encode(['ok' => false, 'msg' => 'File tidak terdeteksi sebagai dokumen Word yang valid.']);
+    echo json_encode(['ok' => false, 'msg' => 'File tidak terdeteksi sebagai dokumen Word, Excel, atau PDF yang valid.']);
     exit;
 }
 
