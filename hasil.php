@@ -109,6 +109,7 @@ echo '<style>
       </a>
       <form action="verifikasi_ulang.php" method="post" class="inline m-0">
         <input type="hidden" name="kth_id" value="<?= $kthId ?>">
+        <input type="hidden" name="v" value="<?= $versiAktif ?>">
         <button type="submit" class="btn-kadaster px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium hover:text-forest-900" title="Hitung ulang kecocokan spasial, nama, dan batas luas">
           <svg class="w-3.5 h-3.5 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
           Uji Ulang

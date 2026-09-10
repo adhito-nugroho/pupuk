@@ -106,7 +106,7 @@ try {
     $insU = $pdo->prepare('
         INSERT INTO usulan_pupuk 
         (kth_id, versi_ke, no_urut, nik, nama, jenis_kelamin, rt, rw, desa, kecamatan, pola_tanam, petak, luas_lahan, no_sk_ps, koordinat_x_raw, koordinat_y_raw, koordinat_x, koordinat_y) 
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ');
 
     foreach ($ex['rows'] as $r) {
