@@ -72,7 +72,90 @@ tambah_kolom($pdo, 'laporan', 'tgl_ba',
     $hasil, $ada_error);
 
 // ═══════════════════════════════════════════════════════
-// Pastikan folder uploads/berita_acara ada
+// Migrasi: tabel kth_versi_usulan (Riwayat Versi Usulan)
+// ═══════════════════════════════════════════════════════
+try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS `kth_versi_usulan` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `kth_id` INT NOT NULL,
+            `versi_ke` INT NOT NULL DEFAULT 1,
+            `label_versi` VARCHAR(100) NOT NULL,
+            `nama_file_asli` VARCHAR(255) NOT NULL,
+            `path_file` VARCHAR(512) NOT NULL,
+            `total_petani` INT DEFAULT 0,
+            `total_luas` DOUBLE DEFAULT 0,
+            `jumlah_sesuai_sk` INT DEFAULT 0,
+            `jumlah_tidak_sesuai_sk` INT DEFAULT 0,
+            `jumlah_dalam_peta` INT DEFAULT 0,
+            `jumlah_luar_peta` INT DEFAULT 0,
+            `rekomendasi` VARCHAR(64) DEFAULT 'Perlu Revisi',
+            `catatan_perbaikan` TEXT NULL,
+            `dibuat_pada` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            KEY `idx_kth_versi` (`kth_id`, `versi_ke`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    $hasil[] = ['status' => 'ok', 'msg' => "Tabel `kth_versi_usulan` siap."];
+} catch (PDOException $e) {
+    $hasil[] = ['status' => 'error', 'msg' => "Gagal membuat tabel `kth_versi_usulan`: " . $e->getMessage()];
+    $ada_error = true;
+}
+
+// Kolom versi di tabel kth, usulan_pupuk, dan hasil_verifikasi
+tambah_kolom($pdo, 'kth', 'versi_aktif',
+    "INT NOT NULL DEFAULT 1 COMMENT 'Nomor versi usulan yang aktif'",
+    $hasil, $ada_error);
+
+tambah_kolom($pdo, 'usulan_pupuk', 'versi_ke',
+    "INT NOT NULL DEFAULT 1 COMMENT 'Nomor versi usulan'",
+    $hasil, $ada_error);
+
+tambah_kolom($pdo, 'hasil_verifikasi', 'versi_ke',
+    "INT NOT NULL DEFAULT 1 COMMENT 'Nomor versi hasil verifikasi'",
+    $hasil, $ada_error);
+
+// Backfill data versi 1 untuk KTH yang sudah ada jika tabel kth_versi_usulan masih kosong
+try {
+    $stKth = $pdo->query('SELECT id, nama_kth, dibuat_pada FROM kth');
+    $backfillCount = 0;
+    while ($rowKth = $stKth->fetch()) {
+        $kId = (int)$rowKth['id'];
+        $cek = $pdo->prepare('SELECT COUNT(*) FROM kth_versi_usulan WHERE kth_id = ?');
+        $cek->execute([$kId]);
+        if ((int)$cek->fetchColumn() === 0) {
+            $h = $pdo->prepare('SELECT COUNT(*) total, SUM(luas_lahan) luas FROM usulan_pupuk WHERE kth_id = ?');
+            $h->execute([$kId]);
+            $uInfo = $h->fetch() ?: [];
+            $totPetani = (int)($uInfo['total'] ?? 0);
+            if ($totPetani > 0) {
+                $h2 = $pdo->prepare('SELECT COUNT(*) total, SUM(status_sk="Sesuai SK PS") sesuai, SUM(status_sk!="Sesuai SK PS") tidak, SUM(status_koordinat="Dalam Peta PS") dalam, SUM(status_koordinat!="Dalam Peta PS") luar FROM hasil_verifikasi WHERE kth_id = ?');
+                $h2->execute([$kId]);
+                $res = $h2->fetch() ?: [];
+                $rekom = ((int)($res['tidak'] ?? 0) === 0 && (int)($res['luar'] ?? 0) === 0) ? 'Dapat Ditindaklanjuti' : 'Perlu Revisi';
+                $pdo->prepare('INSERT INTO kth_versi_usulan (kth_id, versi_ke, label_versi, nama_file_asli, path_file, total_petani, total_luas, jumlah_sesuai_sk, jumlah_tidak_sesuai_sk, jumlah_dalam_peta, jumlah_luar_peta, rekomendasi, catatan_perbaikan, dibuat_pada) VALUES (?, 1, "Usulan Awal (v1)", "usulan_awal.xlsx", "", ?, ?, ?, ?, ?, ?, ?, "Data usulan awal.", ?)')->execute([
+                    $kId,
+                    $totPetani,
+                    (float)($uInfo['luas'] ?? 0),
+                    (int)($res['sesuai'] ?? 0),
+                    (int)($res['tidak'] ?? 0),
+                    (int)($res['dalam'] ?? 0),
+                    (int)($res['luar'] ?? 0),
+                    $rekom,
+                    $rowKth['dibuat_pada'] ?: date('Y-m-d H:i:s')
+                ]);
+                $backfillCount++;
+            }
+        }
+    }
+    if ($backfillCount > 0) {
+        $hasil[] = ['status' => 'ok', 'msg' => "Berhasil mem-backfill {$backfillCount} data versi 1 di `kth_versi_usulan`."];
+    }
+} catch (Throwable $eBf) {
+    $hasil[] = ['status' => 'skip', 'msg' => "Backfill dilewati/ada catatan: " . $eBf->getMessage()];
+}
+
+// ═══════════════════════════════════════════════════════
+// Pastikan folder uploads/berita_acara dan uploads/usulan ada
 // ═══════════════════════════════════════════════════════
 $baDir = __DIR__ . '/uploads/berita_acara';
 if (!is_dir($baDir)) {
@@ -84,6 +167,13 @@ if (!is_dir($baDir)) {
     }
 } else {
     $hasil[] = ['status' => 'skip', 'msg' => "Folder uploads/berita_acara sudah ada — dilewati."];
+}
+
+$usulanDir = __DIR__ . '/uploads/usulan';
+if (!is_dir($usulanDir)) {
+    if (@mkdir($usulanDir, 0775, true)) {
+        $hasil[] = ['status' => 'ok', 'msg' => "Folder uploads/usulan berhasil dibuat."];
+    }
 }
 
 // Jika dijalankan dari CLI (misalnya saat git deploy)
