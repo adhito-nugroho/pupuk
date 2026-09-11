@@ -296,16 +296,16 @@ layout_head('Buku Register Kasus', 'daftar');
 
                           <!-- Ringkasan Angka Audit -->
                           <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-[11px]">
-                            <span><strong class="text-ink font-mono"><?= number_format((int)$v['total_petani']) ?></strong> petani (<?= number_format((float)$v['total_luas'], 2, ',', '.') ?> ha)</span>
+                            <span><strong class="text-ink font-mono"><?= number_format((int)($v['total_petani'] ?? 0)) ?></strong> petani (<?= number_format((float)($v['total_luas'] ?? 0), 2, ',', '.') ?> ha)</span>
                             <span class="text-kadaster-border">|</span>
-                            <span class="text-audit-valid font-medium">SK: <strong><?= (int)$v['jumlah_sesuai_sk'] ?></strong> sesuai</span>
-                            <?php if ((int)$v['jumlah_tidak_sesuai_sk'] > 0): ?>
-                              <span class="text-audit-revisi font-medium">(<?= (int)$v['jumlah_tidak_sesuai_sk'] ?> beda)</span>
+                            <span class="text-audit-valid font-medium">SK: <strong><?= (int)($v['jumlah_sesuai_sk'] ?? 0) ?></strong> sesuai</span>
+                            <?php if ((int)($v['jumlah_tidak_sesuai_sk'] ?? 0) > 0): ?>
+                              <span class="text-audit-revisi font-medium">(<?= (int)($v['jumlah_tidak_sesuai_sk'] ?? 0) ?> beda)</span>
                             <?php endif; ?>
                             <span class="text-kadaster-border">|</span>
-                            <span class="text-forest-900 font-medium">Peta: <strong><?= (int)$v['jumlah_dalam_peta'] ?></strong> dalam</span>
-                            <?php if ((int)$v['jumlah_luar_peta'] > 0): ?>
-                              <span class="text-audit-warn font-medium">(<?= (int)$v['jumlah_luar_peta'] ?> luar)</span>
+                            <span class="text-forest-900 font-medium">Peta: <strong><?= (int)($v['jumlah_dalam_peta'] ?? 0) ?></strong> dalam</span>
+                            <?php if ((int)($v['jumlah_luar_peta'] ?? 0) > 0): ?>
+                              <span class="text-audit-warn font-medium">(<?= (int)($v['jumlah_luar_peta'] ?? 0) ?> luar)</span>
                             <?php endif; ?>
                             <span class="text-kadaster-border">|</span>
                             <span>

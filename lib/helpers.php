@@ -125,6 +125,51 @@ function ambil_daftar_versi(PDO $pdo, int $kthId): array {
     $st->execute([$kthId]);
     $list = $st->fetchAll();
     if (empty($list)) {
+        // Cek apakah ada data usulan_pupuk / hasil_verifikasi yang sudah ada untuk KTH ini
+        $totPetani = 0;
+        $totLuas = 0.0;
+        $sesuai = 0;
+        $tidak = 0;
+        $dalam = 0;
+        $luar = 0;
+        $rekom = 'Perlu Revisi';
+
+        try {
+            $h = $pdo->prepare('SELECT COUNT(*) total, COALESCE(SUM(luas_lahan), 0) luas FROM usulan_pupuk WHERE kth_id = ?');
+            $h->execute([$kthId]);
+            $uInfo = $h->fetch() ?: [];
+            $totPetani = (int)($uInfo['total'] ?? 0);
+            $totLuas = (float)($uInfo['luas'] ?? 0);
+
+            if ($totPetani > 0) {
+                $h2 = $pdo->prepare('SELECT 
+                    COALESCE(SUM(status_sk="Sesuai SK PS"), 0) sesuai, 
+                    COALESCE(SUM(status_sk!="Sesuai SK PS"), 0) tidak, 
+                    COALESCE(SUM(status_koordinat="Dalam Peta PS"), 0) dalam, 
+                    COALESCE(SUM(status_koordinat!="Dalam Peta PS"), 0) luar 
+                    FROM hasil_verifikasi WHERE kth_id = ?');
+                $h2->execute([$kthId]);
+                $res = $h2->fetch() ?: [];
+                $sesuai = (int)($res['sesuai'] ?? 0);
+                $tidak = (int)($res['tidak'] ?? 0);
+                $dalam = (int)($res['dalam'] ?? 0);
+                $luar = (int)($res['luar'] ?? 0);
+                $rekom = ($tidak === 0 && $luar === 0) ? 'Dapat Ditindaklanjuti' : 'Perlu Revisi';
+
+                // Simpan ke kth_versi_usulan jika tabel sudah siap
+                $ins = $pdo->prepare('INSERT INTO kth_versi_usulan (kth_id, versi_ke, label_versi, nama_file_asli, path_file, total_petani, total_luas, jumlah_sesuai_sk, jumlah_tidak_sesuai_sk, jumlah_dalam_peta, jumlah_luar_peta, rekomendasi, catatan_perbaikan, dibuat_pada) VALUES (?, 1, "Usulan Awal (v1)", "usulan_awal.xlsx", "", ?, ?, ?, ?, ?, ?, ?, "Data usulan awal.", NOW())');
+                $ins->execute([$kthId, $totPetani, $totLuas, $sesuai, $tidak, $dalam, $luar, $rekom]);
+
+                $st->execute([$kthId]);
+                $listInserted = $st->fetchAll();
+                if (!empty($listInserted)) {
+                    return $listInserted;
+                }
+            }
+        } catch (Throwable $e) {
+            // Abaikan kesalahan bila skema belum siap
+        }
+
         return [[
             'id' => 0,
             'kth_id' => $kthId,
@@ -132,7 +177,14 @@ function ambil_daftar_versi(PDO $pdo, int $kthId): array {
             'label_versi' => 'Usulan Awal (v1)',
             'nama_file_asli' => 'usulan_awal.xlsx',
             'path_file' => '',
-            'total_petani' => 0,
+            'total_petani' => $totPetani,
+            'total_luas' => $totLuas,
+            'jumlah_sesuai_sk' => $sesuai,
+            'jumlah_tidak_sesuai_sk' => $tidak,
+            'jumlah_dalam_peta' => $dalam,
+            'jumlah_luar_peta' => $luar,
+            'rekomendasi' => $rekom,
+            'catatan_perbaikan' => '',
             'dibuat_pada' => date('Y-m-d H:i:s'),
         ]];
     }

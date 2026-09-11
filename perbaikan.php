@@ -116,7 +116,7 @@ layout_kth_subnav($kth, 'perbaikan', $versiAktif, $daftarVersi);
 
       <div class="space-y-4">
         <?php foreach ($daftarVersi as $v): 
-            $vNum = (int)$v['versi_ke'];
+            $vNum = (int)($v['versi_ke'] ?? 1);
             $isAktif = $vNum === $versiAktif;
             $isDapat = ($v['rekomendasi'] ?? '') === 'Dapat Ditindaklanjuti';
             $tglStr = !empty($v['dibuat_pada']) ? date('d M Y · H:i', strtotime($v['dibuat_pada'])) : '-';
@@ -132,7 +132,7 @@ layout_kth_subnav($kth, 'perbaikan', $versiAktif, $daftarVersi);
               </div>
               <div>
                 <div class="flex items-center gap-2 flex-wrap">
-                  <h4 class="font-bold text-sm text-ink"><?= e($v['label_versi'] ?: ('Versi ' . $vNum)) ?></h4>
+                  <h4 class="font-bold text-sm text-ink"><?= e(($v['label_versi'] ?? '') ?: ('Versi ' . $vNum)) ?></h4>
                   <?php if ($isAktif): ?>
                   <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-700 text-white uppercase tracking-wider">
                     Versi Aktif
@@ -143,7 +143,7 @@ layout_kth_subnav($kth, 'perbaikan', $versiAktif, $daftarVersi);
                 <div class="text-xs text-ink-muted flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
                   <span>📅 <?= $tglStr ?> WIB</span>
                   <span class="text-kadaster-border">·</span>
-                  <span>📄 <?= e($v['nama_file_asli'] ?: 'Berkas Usulan') ?></span>
+                  <span>📄 <?= e(($v['nama_file_asli'] ?? '') ?: 'Berkas Usulan') ?></span>
                 </div>
               </div>
             </div>
@@ -173,23 +173,23 @@ layout_kth_subnav($kth, 'perbaikan', $versiAktif, $daftarVersi);
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 pt-3 border-t border-kadaster-border/60 text-xs">
             <div class="bg-white/80 p-2 rounded border border-kadaster-border/50">
               <div class="text-[10.5px] text-ink-muted">Total Usulan</div>
-              <div class="font-bold text-ink mt-0.5"><?= number_format((int)$v['total_petani']) ?> Petani</div>
-              <div class="text-[10px] text-ink-faint"><?= number_format((float)$v['total_luas'], 2, ',', '.') ?> Ha</div>
+              <div class="font-bold text-ink mt-0.5"><?= number_format((int)($v['total_petani'] ?? 0)) ?> Petani</div>
+              <div class="text-[10px] text-ink-faint"><?= number_format((float)($v['total_luas'] ?? 0), 2, ',', '.') ?> Ha</div>
             </div>
 
             <div class="bg-white/80 p-2 rounded border border-kadaster-border/50">
               <div class="text-[10.5px] text-ink-muted">Kesesuaian SK</div>
-              <div class="font-bold text-audit-valid mt-0.5"><?= (int)$v['jumlah_sesuai_sk'] ?> Sesuai</div>
-              <?php if ((int)$v['jumlah_tidak_sesuai_sk'] > 0): ?>
-              <div class="text-[10px] text-audit-revisi font-semibold"><?= (int)$v['jumlah_tidak_sesuai_sk'] ?> Belum Sesuai</div>
+              <div class="font-bold text-audit-valid mt-0.5"><?= (int)($v['jumlah_sesuai_sk'] ?? 0) ?> Sesuai</div>
+              <?php if ((int)($v['jumlah_tidak_sesuai_sk'] ?? 0) > 0): ?>
+              <div class="text-[10px] text-audit-revisi font-semibold"><?= (int)($v['jumlah_tidak_sesuai_sk'] ?? 0) ?> Belum Sesuai</div>
               <?php endif; ?>
             </div>
 
             <div class="bg-white/80 p-2 rounded border border-kadaster-border/50">
               <div class="text-[10.5px] text-ink-muted">Posisi Spasial</div>
-              <div class="font-bold text-forest-900 mt-0.5"><?= (int)$v['jumlah_dalam_peta'] ?> Dalam Peta</div>
-              <?php if ((int)$v['jumlah_luar_peta'] > 0): ?>
-              <div class="text-[10px] text-audit-warn font-semibold"><?= (int)$v['jumlah_luar_peta'] ?> Luar Peta</div>
+              <div class="font-bold text-forest-900 mt-0.5"><?= (int)($v['jumlah_dalam_peta'] ?? 0) ?> Dalam Peta</div>
+              <?php if ((int)($v['jumlah_luar_peta'] ?? 0) > 0): ?>
+              <div class="text-[10px] text-audit-warn font-semibold"><?= (int)($v['jumlah_luar_peta'] ?? 0) ?> Luar Peta</div>
               <?php endif; ?>
             </div>
 
