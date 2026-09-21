@@ -56,7 +56,20 @@ try {
     // 3. Hapus record dari kth_versi_usulan
     $pdo->prepare('DELETE FROM kth_versi_usulan WHERE kth_id = ? AND versi_ke = ?')->execute([$kthId, $versiKe]);
 
-    // 4. Hapus file fisik jika ada
+    // 4. Hapus laporan khusus versi ini jika ada
+    try {
+        $stLapDel = $pdo->prepare('SELECT berkas_ba FROM laporan WHERE kth_id = ? AND versi_ke = ?');
+        $stLapDel->execute([$kthId, $versiKe]);
+        foreach ($stLapDel->fetchAll() as $rLapDel) {
+            if (!empty($rLapDel['berkas_ba'])) {
+                $fullPathBa = __DIR__ . '/' . ltrim($rLapDel['berkas_ba'], '/');
+                if (is_file($fullPathBa)) @unlink($fullPathBa);
+            }
+        }
+        $pdo->prepare('DELETE FROM laporan WHERE kth_id = ? AND versi_ke = ?')->execute([$kthId, $versiKe]);
+    } catch (Throwable $eDelLap) {}
+
+    // 5. Hapus file fisik usulan perbaikan jika ada
     if (!empty($ver['path_file'])) {
         $fullPath = __DIR__ . '/' . ltrim($ver['path_file'], '/');
         if (is_file($fullPath)) {

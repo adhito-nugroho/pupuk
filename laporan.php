@@ -447,6 +447,7 @@ $baTgl   = $lap['tgl_ba']       ?? null;
       <form action="hapus_ba.php" method="post" class="inline m-0"
         onsubmit="return confirm('Hapus file Berita Acara ini? File tidak dapat dipulihkan.')">
         <input type="hidden" name="kth_id" value="<?= $kthId ?>">
+        <input type="hidden" name="v" value="<?= $versiAktif ?>">
         <button type="submit"
           class="px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-audit-revisi hover:text-red-800 border border-red-200 rounded hover:bg-red-50 transition-colors">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>

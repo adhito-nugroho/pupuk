@@ -73,17 +73,32 @@ function proses_db_simpan(string $namaKth, int $tahun, string $namaKph, string $
             $pdo->prepare('DELETE FROM usulan_pupuk WHERE kth_id = ?')->execute([$kthId]);
             $pdo->prepare('DELETE FROM sk_anggota WHERE kth_id = ?')->execute([$kthId]);
             $pdo->prepare('DELETE FROM poligon_ps WHERE kth_id = ?')->execute([$kthId]);
-            $pdo->prepare('UPDATE kth SET nomor_sk = ?, nama_kph = ?, luas_areal = ?, tanggal_sk = ?, tahun_usulan = ?, nama_kth = ? WHERE id = ?')
+            try { $pdo->prepare('DELETE FROM kth_versi_usulan WHERE kth_id = ?')->execute([$kthId]); } catch (Throwable $eVDel) {}
+            $pdo->prepare('UPDATE kth SET nomor_sk = ?, nama_kph = ?, luas_areal = ?, tanggal_sk = ?, tahun_usulan = ?, nama_kth = ?, versi_aktif = 1 WHERE id = ?')
                 ->execute([$nomorSk ?: null, $namaKph ?: null, $luasVal, $tglVal, $tahun ?: null, $namaKth, $kthId]);
             @file_put_contents(__DIR__ . '/hapus.log',
                 date('Y-m-d H:i:s') . ' | TIMPA KASUS (upload ulang disetujui) | id=' . $kthId
                 . ' | nama=' . $namaKth . ' | ip=' . ($_SERVER['REMOTE_ADDR'] ?? '-') . PHP_EOL, FILE_APPEND);
         } else {
-            $pdo->prepare('INSERT INTO kth (nama_kth, nomor_sk, nama_kph, luas_areal, tanggal_sk, tahun_usulan) VALUES (?,?,?,?,?,?)')
+            $pdo->prepare('INSERT INTO kth (nama_kth, nomor_sk, nama_kph, luas_areal, tanggal_sk, tahun_usulan, versi_aktif) VALUES (?,?,?,?,?,?,1)')
                 ->execute([$namaKth, $nomorSk ?: null, $namaKph ?: null, $luasVal, $tglVal, $tahun ?: null]);
             $kthId = (int)$pdo->lastInsertId();
         }
-        $insU = $pdo->prepare('INSERT INTO usulan_pupuk (kth_id, no_urut, nik, nama, jenis_kelamin, rt, rw, desa, kecamatan, pola_tanam, petak, luas_lahan, no_sk_ps, koordinat_x_raw, koordinat_y_raw, koordinat_x, koordinat_y) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+
+        // Simpan versi 1 ke riwayat versi usulan
+        $origExcelName = !empty($_SESSION['pending_baru']['origExcelName'])
+            ? $_SESSION['pending_baru']['origExcelName']
+            : (!empty($_FILES['f_excel']['name']) ? basename($_FILES['f_excel']['name']) : basename($dstExcel));
+        $relPathExcel = 'uploads/' . basename($dstExcel);
+        try {
+            $pdo->prepare('
+                INSERT INTO kth_versi_usulan 
+                (kth_id, versi_ke, label_versi, nama_file_asli, path_file, total_petani, total_luas, catatan_perbaikan) 
+                VALUES (?, 1, "Usulan Awal (v1)", ?, ?, ?, 0, "Data usulan awal.")
+            ')->execute([$kthId, $origExcelName, $relPathExcel, count($ex['rows'])]);
+        } catch (Throwable $eInsV) {}
+
+        $insU = $pdo->prepare('INSERT INTO usulan_pupuk (kth_id, versi_ke, no_urut, nik, nama, jenis_kelamin, rt, rw, desa, kecamatan, pola_tanam, petak, luas_lahan, no_sk_ps, koordinat_x_raw, koordinat_y_raw, koordinat_x, koordinat_y) VALUES (?,1,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
         foreach ($ex['rows'] as $r) {
             $insU->execute([
                 $kthId, $r['no'], $r['nik'], $r['nama'], $r['jk'] ?: null, $r['rt'] ?: null, $r['rw'] ?: null,

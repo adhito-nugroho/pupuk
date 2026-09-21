@@ -94,9 +94,23 @@ try {
     $rekom = ((int)($agg['tidak'] ?? 0) === 0 && (int)($agg['luar'] ?? 0) === 0) ? 'Dapat Ditindaklanjuti' : 'Perlu Revisi';
     $pdo->prepare('UPDATE kth_versi_usulan SET total_petani=?, total_luas=?, jumlah_sesuai_sk=?, jumlah_tidak_sesuai_sk=?, jumlah_dalam_peta=?, jumlah_luar_peta=?, rekomendasi=? WHERE kth_id=? AND versi_ke=?')
         ->execute([(int)($agg['total'] ?? 0), $totalLuas, (int)($agg['sesuai'] ?? 0), (int)($agg['tidak'] ?? 0), (int)($agg['dalam'] ?? 0), (int)($agg['luar'] ?? 0), $rekom, $kthId, $versiKe]);
-    $stLap = $pdo->prepare('SELECT id FROM laporan WHERE kth_id = ? ORDER BY id DESC LIMIT 1');
-    $stLap->execute([$kthId]);
-    if ($idLap = $stLap->fetchColumn()) {
+
+    $idLap = false;
+    try {
+        $cekV = $pdo->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'laporan' AND COLUMN_NAME = 'versi_ke'");
+        $cekV->execute();
+        if ((int)$cekV->fetchColumn() > 0) {
+            $stV = $pdo->prepare('SELECT id FROM laporan WHERE kth_id = ? AND versi_ke = ? ORDER BY id DESC LIMIT 1');
+            $stV->execute([$kthId, $versiKe]);
+            $idLap = $stV->fetchColumn();
+        }
+    } catch (Throwable $eLV) { $idLap = false; }
+    if (!$idLap) {
+        $stLap = $pdo->prepare('SELECT id FROM laporan WHERE kth_id = ? ORDER BY id DESC LIMIT 1');
+        $stLap->execute([$kthId]);
+        $idLap = $stLap->fetchColumn();
+    }
+    if ($idLap) {
         $pdo->prepare('UPDATE laporan SET total_petani=?, jumlah_sesuai_sk=?, jumlah_tidak_sesuai_sk=?, jumlah_dalam_peta=?, jumlah_luar_peta=?, rekomendasi=? WHERE id=?')
             ->execute([(int)($agg['total'] ?? 0), (int)($agg['sesuai'] ?? 0), (int)($agg['tidak'] ?? 0), (int)($agg['dalam'] ?? 0), (int)($agg['luar'] ?? 0), $rekom, (int)$idLap]);
     }

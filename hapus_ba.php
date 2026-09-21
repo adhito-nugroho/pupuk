@@ -14,6 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $kthId = (int)($_POST['kth_id'] ?? 0);
+$vParam = (int)($_POST['v'] ?? $_POST['versi_ke'] ?? 0);
 if (!$kthId) {
     flash_set('error', 'Parameter tidak valid.');
     header('Location: index.php'); exit;
@@ -21,9 +22,20 @@ if (!$kthId) {
 
 $pdo = db();
 
-$lapRow = $pdo->prepare('SELECT id, berkas_ba FROM laporan WHERE kth_id = ? ORDER BY id DESC LIMIT 1');
-$lapRow->execute([$kthId]);
-$lap = $lapRow->fetch();
+$lap = false;
+if ($vParam > 0) {
+    try {
+        $stV = $pdo->prepare('SELECT id, berkas_ba FROM laporan WHERE kth_id = ? AND versi_ke = ? AND berkas_ba IS NOT NULL ORDER BY id DESC LIMIT 1');
+        $stV->execute([$kthId, $vParam]);
+        $lap = $stV->fetch();
+    } catch (Throwable $eV) { $lap = false; }
+}
+
+if (!$lap) {
+    $lapRow = $pdo->prepare('SELECT id, berkas_ba FROM laporan WHERE kth_id = ? AND berkas_ba IS NOT NULL ORDER BY id DESC LIMIT 1');
+    $lapRow->execute([$kthId]);
+    $lap = $lapRow->fetch();
+}
 
 if ($lap && !empty($lap['berkas_ba'])) {
     // Hapus file fisik
@@ -40,5 +52,6 @@ if ($lap && !empty($lap['berkas_ba'])) {
     flash_set('error', 'File Berita Acara tidak ditemukan.');
 }
 
-header('Location: laporan.php?kth_id=' . $kthId);
+$dest = 'laporan.php?kth_id=' . $kthId . ($vParam > 1 ? '&v=' . $vParam : '');
+header('Location: ' . $dest);
 exit;
