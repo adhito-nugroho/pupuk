@@ -201,6 +201,30 @@ if (!is_dir($usulanDir)) {
     }
 }
 
+// ═══════════════════════════════════════════════════════
+// Sinkronisasi & Konversi Koordinat UTM Lama di Database
+// ═══════════════════════════════════════════════════════
+try {
+    require_once __DIR__ . '/lib/helpers.php';
+    $resUtm = sinkronkan_koordinat_utm_ke_wgs84($pdo);
+    if ($resUtm['total_diupdate'] > 0) {
+        $hasil[] = [
+            'status' => 'ok',
+            'msg' => "Sinkronisasi Koordinat UTM: {$resUtm['total_diupdate']} baris data koordinat UTM lama berhasil dikonversi ke Geografis WGS84 ({$resUtm['kth_terpengaruh']} KTH diperbarui)."
+        ];
+    } else {
+        $hasil[] = [
+            'status' => 'skip',
+            'msg' => 'Semua koordinat di database sudah berformat Geografis WGS84 standar — tidak ada baris UTM yang perlu dikonversi.'
+        ];
+    }
+} catch (Throwable $eUtm) {
+    $hasil[] = [
+        'status' => 'skip',
+        'msg' => 'Sinkronisasi koordinat UTM dilewati: ' . $eUtm->getMessage()
+    ];
+}
+
 // Jika dijalankan dari CLI (misalnya saat git deploy)
 if (php_sapi_name() === 'cli') {
     echo "\n=== [SERVER] MENJALANKAN MIGRASI DATABASE ===\n";

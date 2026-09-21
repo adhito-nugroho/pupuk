@@ -10,6 +10,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') { header('Location: index.php'); exit
 $kthId = (int)($_POST['kth_id'] ?? 0);
 $versiKe = (int)($_POST['v'] ?? 0);
 $pdo = db();
+
+// Sinkronkan koordinat jika ada format UTM di database sebelum verifikasi ulang
+$syncUtm = sinkronkan_koordinat_utm_ke_wgs84($pdo, $kthId, false);
+
 $hitung = verifikasi_satu_kth($pdo, $kthId, $versiKe);
 $vAktif = $hitung['versi_ke'] ?? 1;
 
@@ -35,6 +39,9 @@ if ($lapId) {
         ->execute([$hitung['total'], $hitung['sesuai'], $hitung['tidak'], $hitung['dalam'], $hitung['luar'], (int)$lapId]);
 }
 $pesanFlash = 'Verifikasi versi ' . $vAktif . ' dihitung ulang: ' . $hitung['sesuai'] . ' sesuai SK, ' . $hitung['tidak'] . ' belum; ' . $hitung['dalam'] . ' dalam peta, ' . $hitung['luar'] . ' luar peta.';
+if (!empty($syncUtm['total_diupdate'])) {
+    $pesanFlash .= ' (🌐 ' . $syncUtm['total_diupdate'] . ' titik koordinat UTM otomatis dikonversi ke Geografis WGS84).';
+}
 if (!empty($hitung['lebih_luas'])) {
     $pesanFlash .= ' (⚠️ Terdapat ' . $hitung['lebih_luas'] . ' petani dengan luas usulan melebihi 2 Ha).';
 }

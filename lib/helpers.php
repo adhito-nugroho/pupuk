@@ -339,3 +339,93 @@ function ambil_versi_terpilih(array $kth, ?int $vParam = null): int {
     return $vAktif > 0 ? $vAktif : 1;
 }
 
+/**
+ * Sinkronisasi & konversi otomatis seluruh koordinat bertipe UTM yang sudah terlanjur tersimpan di database
+ * menjadi koordinat derajat desimal WGS84 (Longitude & Latitude).
+ * 
+ * Jika ada baris yang dikonversi, fungsi ini dapat otomatis memicu verifikasi ulang
+ * untuk KTH dan versi terkait agar status 'Dalam Peta PS' / 'Luar Peta PS' langsung terbarukan.
+ *
+ * @param PDO $pdo
+ * @param int|null $onlyKthId Jika diset, hanya KTH tertentu yang disinkronkan.
+ * @param bool $reverifikasi Otomatis jalankan verifikasi_satu_kth() pada KTH terdampak.
+ * @return array Ringkasan hasil [total_diupdate, kth_terpengaruh, daftar_kth]
+ */
+function sinkronkan_koordinat_utm_ke_wgs84(PDO $pdo, ?int $onlyKthId = null, bool $reverifikasi = true): array {
+    $sql = 'SELECT id, kth_id, versi_ke, koordinat_x_raw, koordinat_y_raw, koordinat_x, koordinat_y FROM usulan_pupuk';
+    $params = [];
+    if ($onlyKthId !== null && $onlyKthId > 0) {
+        $sql .= ' WHERE kth_id = ?';
+        $params[] = $onlyKthId;
+    }
+    $st = $pdo->prepare($sql);
+    $st->execute($params);
+    $rows = $st->fetchAll();
+
+    $updCount = 0;
+    $affectedKthVersi = [];
+    $updStmt = $pdo->prepare('UPDATE usulan_pupuk SET koordinat_x = ?, koordinat_y = ? WHERE id = ?');
+
+    foreach ($rows as $r) {
+        $rawX = !empty($r['koordinat_x_raw']) ? (string)$r['koordinat_x_raw'] : ($r['koordinat_x'] !== null ? (string)$r['koordinat_x'] : '');
+        $rawY = !empty($r['koordinat_y_raw']) ? (string)$r['koordinat_y_raw'] : ($r['koordinat_y'] !== null ? (string)$r['koordinat_y'] : '');
+
+        if ($rawX === '' || $rawY === '') continue;
+
+        $conv = parse_dan_konversi_koordinat($rawX, $rawY);
+        $curX = $r['koordinat_x'] !== null ? (float)$r['koordinat_x'] : null;
+        $curY = $r['koordinat_y'] !== null ? (float)$r['koordinat_y'] : null;
+        $newX = $conv['x'];
+        $newY = $conv['y'];
+
+        if ($newX !== null && $newY !== null) {
+            $isOldUtmOrWrong = ($curX === null || $curY === null || $curX > 180 || $curX < -180 || $curY > 90 || $curY < -90);
+            $isDiff = abs(($curX ?? 0) - $newX) > 0.000001 || abs(($curY ?? 0) - $newY) > 0.000001;
+
+            if ($isOldUtmOrWrong || ($conv['is_utm'] && $isDiff)) {
+                $updStmt->execute([$newX, $newY, (int)$r['id']]);
+                $updCount++;
+                $vKe = (int)($r['versi_ke'] ?? 1);
+                if ($vKe <= 0) $vKe = 1;
+                $kKey = $r['kth_id'] . '_' . $vKe;
+                $affectedKthVersi[$kKey] = [
+                    'kth_id' => (int)$r['kth_id'],
+                    'versi_ke' => $vKe,
+                ];
+            }
+        }
+    }
+
+    // Jika diminta re-verifikasi dan ada baris yang diperbarui
+    if ($reverifikasi && $updCount > 0) {
+        require_once __DIR__ . '/verify.php';
+        foreach ($affectedKthVersi as $item) {
+            $kId = $item['kth_id'];
+            $vKe = $item['versi_ke'];
+            try {
+                $h = verifikasi_satu_kth($pdo, $kId, $vKe);
+
+                // Sinkronkan ke kth_versi_usulan jika ada
+                try {
+                    $rekom = ($h['tidak'] === 0 && $h['luar'] === 0) ? 'Dapat Ditindaklanjuti' : 'Perlu Revisi';
+                    $pdo->prepare('UPDATE kth_versi_usulan SET jumlah_sesuai_sk = ?, jumlah_tidak_sesuai_sk = ?, jumlah_dalam_peta = ?, jumlah_luar_peta = ?, rekomendasi = ? WHERE kth_id = ? AND versi_ke = ?')
+                        ->execute([$h['sesuai'], $h['tidak'], $h['dalam'], $h['luar'], $rekom, $kId, $vKe]);
+                } catch (Throwable $eV) {}
+
+                // Sinkronkan ke laporan jika ada
+                try {
+                    $pdo->prepare('UPDATE laporan SET total_petani=?, jumlah_sesuai_sk=?, jumlah_tidak_sesuai_sk=?, jumlah_dalam_peta=?, jumlah_luar_peta=? WHERE kth_id=? AND versi_ke=?')
+                        ->execute([$h['total'], $h['sesuai'], $h['tidak'], $h['dalam'], $h['luar'], $kId, $vKe]);
+                } catch (Throwable $eL) {}
+            } catch (Throwable $eVer) {
+                // Abaikan kesalahan parsial
+            }
+        }
+    }
+
+    return [
+        'total_diupdate' => $updCount,
+        'kth_terpengaruh' => count($affectedKthVersi),
+        'daftar_kth' => array_values($affectedKthVersi),
+    ];
+}

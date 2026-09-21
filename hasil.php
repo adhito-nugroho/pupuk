@@ -344,7 +344,16 @@ echo '<style>
             <?= e($r['no_urut'] ?? ($idx + 1)) ?>
           </td>
           <td class="px-3 py-2 font-medium text-ink">
-            <?= e($r['nama'] ?? '-') ?>
+            <div><?= e($r['nama'] ?? '-') ?></div>
+            <?php if (!empty($r['koordinat_x_raw']) || !empty($r['koordinat_y_raw'])): ?>
+              <div class="text-[10px] text-ink-faint font-mono mt-0.5" title="Koordinat asal berkas">
+                📍 <?= e($r['koordinat_x_raw'] ?? '') ?>, <?= e($r['koordinat_y_raw'] ?? '') ?>
+              </div>
+            <?php elseif ($r['koordinat_x'] !== null && $r['koordinat_y'] !== null): ?>
+              <div class="text-[10px] text-ink-faint font-mono mt-0.5" title="Koordinat Geografis WGS84">
+                📍 <?= number_format((float)$r['koordinat_x'], 6) ?>, <?= number_format((float)$r['koordinat_y'], 6) ?>
+              </div>
+            <?php endif; ?>
           </td>
           <td class="px-3 py-2 font-mono text-[11px] text-ink-muted">
             <?= e($r['nik'] ?? '-') ?>
