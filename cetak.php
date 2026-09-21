@@ -37,14 +37,15 @@ $stRows = $pdo->prepare('
 $stRows->execute([$kthId, $versiAktif]);
 $rows = $stRows->fetchAll();
 
-$hitung = ['total' => count($rows), 'sesuai' => 0, 'tidak' => 0, 'dalam' => 0, 'luar' => 0, 'luas' => 0.0];
+$hitung = ['total' => count($rows), 'sesuai' => 0, 'tidak' => 0, 'dalam' => 0, 'luar' => 0, 'luas' => 0.0, 'lebih' => 0];
 foreach ($rows as $r) {
     if (($r['status_sk'] ?? '') === 'Sesuai SK PS') $hitung['sesuai']++; else $hitung['tidak']++;
     if (($r['status_koordinat'] ?? '') === 'Dalam Peta PS') $hitung['dalam']++; else $hitung['luar']++;
     $hitung['luas'] += (float)($r['luas_lahan'] ?? 0);
+    if ((float)($r['luas_lahan'] ?? 0) > 2.0) $hitung['lebih']++;
 }
 
-$rekom = ($hitung['tidak'] === 0 && $hitung['luar'] === 0 && $hitung['total'] > 0) ? 'DAPAT DITINDAKLANJUTI' : 'PERLU REVISI';
+$rekom = ($hitung['tidak'] === 0 && $hitung['luar'] === 0 && $hitung['lebih'] === 0 && $hitung['total'] > 0) ? 'DAPAT DITINDAKLANJUTI' : 'PERLU REVISI';
 ?>
 <!DOCTYPE html>
 <html lang="id">

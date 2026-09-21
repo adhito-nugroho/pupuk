@@ -47,6 +47,10 @@ wizard(1);
             <?php foreach ($kths as $k): ?><option value="<?= e($k['nama_kth']) ?>"><?php endforeach; ?>
           </datalist>
           <p class="text-[11px] text-ink-faint mt-1">Pilih kelompok tani terdaftar atau ketik nama baru.</p>
+          <label class="flex items-start gap-2 mt-2 text-[11px] text-ink-muted bg-amber-50 border border-amber-200 rounded px-2.5 py-2 leading-relaxed">
+            <input type="checkbox" name="timpa_jika_ada" value="1" class="mt-0.5">
+            <span>Saya sadar: bila nama KTH ini <b>sudah terdaftar</b>, seluruh data lama kasus tersebut akan <b>diganti</b> dengan berkas yang saya unggah sekarang. Centang untuk menyetujui.</span>
+          </label>
         </div>
 
         <div>

@@ -107,6 +107,7 @@ CREATE TABLE IF NOT EXISTS hasil_verifikasi (
 CREATE TABLE IF NOT EXISTS laporan (
     id INT AUTO_INCREMENT PRIMARY KEY,
     kth_id INT NOT NULL,
+    versi_ke INT NOT NULL DEFAULT 1,
     tahun VARCHAR(8) DEFAULT NULL,
     total_petani INT DEFAULT 0,
     jumlah_sesuai_sk INT DEFAULT 0,

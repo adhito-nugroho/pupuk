@@ -20,9 +20,22 @@ function build_laporan_spreadsheet(PDO $pdo, int $kthId, ?array $laporan = null,
     }
 
     if ($laporan === null) {
-        $st = $pdo->prepare('SELECT * FROM laporan WHERE kth_id = ? ORDER BY id DESC LIMIT 1');
-        $st->execute([$kthId]);
-        $laporan = $st->fetch() ?: [];
+        $laporan = [];
+        // Utamakan laporan versi yang diminta; fallback ke terakhir (data lama)
+        try {
+            $cekV = $pdo->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'laporan' AND COLUMN_NAME = 'versi_ke'");
+            $cekV->execute();
+            if ((int)$cekV->fetchColumn() > 0) {
+                $stV = $pdo->prepare('SELECT * FROM laporan WHERE kth_id = ? AND versi_ke = ? ORDER BY id DESC LIMIT 1');
+                $stV->execute([$kthId, $versiKe]);
+                $laporan = $stV->fetch() ?: [];
+            }
+        } catch (Throwable $eV) { $laporan = []; }
+        if (empty($laporan)) {
+            $st = $pdo->prepare('SELECT * FROM laporan WHERE kth_id = ? ORDER BY id DESC LIMIT 1');
+            $st->execute([$kthId]);
+            $laporan = $st->fetch() ?: [];
+        }
     }
 
     $q = $pdo->prepare('SELECT u.no_urut, u.nama, u.nik, u.luas_lahan, h.status_sk, h.status_koordinat, h.catatan

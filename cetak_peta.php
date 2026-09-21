@@ -10,6 +10,7 @@ require_once __DIR__ . '/lib/db.php';
 require_once __DIR__ . '/lib/helpers.php';
 
 $kthId = (int)($_GET['kth_id'] ?? 0);
+$vParam = isset($_GET['v']) ? (int)$_GET['v'] : null;
 $pdo = db();
 $kth = $pdo->prepare('SELECT * FROM kth WHERE id = ?');
 $kth->execute([$kthId]);
@@ -18,10 +19,12 @@ if (!$k) {
     echo '<div style="font-family:sans-serif;padding:40px;text-align:center"><h3>Data KTH tidak ditemukan.</h3><a href="index.php">Kembali ke Buku Register</a></div>';
     exit;
 }
+$versiCetak = $vParam > 0 ? $vParam : (int)($k['versi_aktif'] ?? 1);
+if ($versiCetak <= 0) $versiCetak = 1;
 
-// Ambil lokasi dari usulan pupuk (Desa, Kecamatan, Petak)
-$qLoc = $pdo->prepare('SELECT desa, kecamatan, petak FROM usulan_pupuk WHERE kth_id = ? AND (desa IS NOT NULL AND desa != "") LIMIT 1');
-$qLoc->execute([$kthId]);
+// Ambil lokasi dari usulan pupuk versi yang dicetak
+$qLoc = $pdo->prepare('SELECT desa, kecamatan, petak FROM usulan_pupuk WHERE kth_id = ? AND versi_ke = ? AND (desa IS NOT NULL AND desa != "") LIMIT 1');
+$qLoc->execute([$kthId, $versiCetak]);
 $loc = $qLoc->fetch() ?: [];
 
 $namaKth   = strtoupper(trim($k['nama_kth'] ?? 'KTH'));
@@ -32,13 +35,13 @@ $namaKec   = !empty($loc['kecamatan']) ? strtoupper(trim($loc['kecamatan'])) : '
 $petakNo   = !empty($loc['petak']) ? trim($loc['petak']) : '18';
 $namaKab   = 'BOJONEGORO';
 
-// Hitung statistik verifikasi
+// Hitung statistik verifikasi versi yang dicetak
 $h = $pdo->prepare('SELECT COUNT(*) total,
   SUM(status_sk = "Sesuai SK PS") sesuai,
   SUM(status_sk != "Sesuai SK PS") tidak,
   SUM(status_koordinat = "Dalam Peta PS") dalam,
-  SUM(status_koordinat != "Dalam Peta PS") luar FROM hasil_verifikasi WHERE kth_id = ?');
-$h->execute([$kthId]);
+  SUM(status_koordinat != "Dalam Peta PS") luar FROM hasil_verifikasi WHERE kth_id = ? AND versi_ke = ?');
+$h->execute([$kthId, $versiCetak]);
 $live = $h->fetch() ?: ['total'=>0,'sesuai'=>0,'tidak'=>0,'dalam'=>0,'luar'=>0];
 ?>
 <!DOCTYPE html>
@@ -667,7 +670,7 @@ $live = $h->fetch() ?: ['total'=>0,'sesuai'=>0,'tidak'=>0,'dalam'=>0,'luar'=>0];
     </button>
 
     <!-- Kembali -->
-    <a href="hasil.php?kth_id=<?= $kthId ?>" class="btn-back">
+    <a href="hasil.php?kth_id=<?= $kthId ?>&v=<?= $versiCetak ?>" class="btn-back">
       <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
       Kembali
     </a>
@@ -1053,7 +1056,7 @@ $live = $h->fetch() ?: ['total'=>0,'sesuai'=>0,'tidak'=>0,'dalam'=>0,'luar'=>0];
   }
 
   // Load Data Poligon & Titik Petani
-  fetch('peta_data.php?kth_id=' + KTH_ID)
+  fetch('peta_data.php?kth_id=' + KTH_ID + '&v=<?= $versiCetak ?>')
     .then(r => r.json())
     .then(data => {
       const allBounds = [];

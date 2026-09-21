@@ -30,9 +30,20 @@ function verifikasi_satu_kth(PDO $pdo, int $kthId, int $versiKe = 0): array {
     $us->execute([$kthId, $versiKe]);
     $usulan = $us->fetchAll();
 
+    // Ambil data lama agar koreksi manual + catatan verifikator tidak hilang
+    // saat hitung ulang (sebelumnya DELETE menghapus semuanya).
+    $lama = [];
+    try {
+        $stLama = $pdo->prepare('SELECT usulan_id, status_sk, status_koordinat, catatan, koordinat_koreksi_x, koordinat_koreksi_y, dikoreksi_pada FROM hasil_verifikasi WHERE kth_id = ? AND versi_ke = ?');
+        $stLama->execute([$kthId, $versiKe]);
+        foreach ($stLama->fetchAll() as $lr) {
+            $lama[(int)$lr['usulan_id']] = $lr;
+        }
+    } catch (Throwable $eLama) { $lama = []; }
+
     // Hapus hasil lama untuk versi ini, hitung ulang
     $pdo->prepare('DELETE FROM hasil_verifikasi WHERE kth_id = ? AND versi_ke = ?')->execute([$kthId, $versiKe]);
-    $ins = $pdo->prepare('INSERT INTO hasil_verifikasi (usulan_id, kth_id, versi_ke, status_sk, status_koordinat, catatan, kemiripan_nama, nama_mirip_sk) VALUES (?,?,?,?,?,?,?,?)');
+    $ins = $pdo->prepare('INSERT INTO hasil_verifikasi (usulan_id, kth_id, versi_ke, status_sk, status_koordinat, catatan, kemiripan_nama, nama_mirip_sk, koordinat_koreksi_x, koordinat_koreksi_y, dikoreksi_pada) VALUES (?,?,?,?,?,?,?,?,?,?,?)');
 
     $cSesuai = 0; $cTidak = 0; $cDalam = 0; $cLuar = 0; $cLebihLuas = 0;
     $totalLuasUsulan = 0.0;
@@ -55,7 +66,14 @@ function verifikasi_satu_kth(PDO $pdo, int $kthId, int $versiKe = 0): array {
 
         $x = $u['koordinat_x'] !== null ? (float)$u['koordinat_x'] : null;
         $y = $u['koordinat_y'] !== null ? (float)$u['koordinat_y'] : null;
-        if ($x === null || $y === null) {
+        // Koordinat koreksi manual (jika ada) dipakai sebagai posisi efektif
+        // untuk uji spasial — koordinat asli di usulan_pupuk tetap utuh.
+        $rowLama = $lama[(int)$u['id']] ?? null;
+        $korX = $rowLama && $rowLama['koordinat_koreksi_x'] !== null ? (float)$rowLama['koordinat_koreksi_x'] : null;
+        $korY = $rowLama && $rowLama['koordinat_koreksi_y'] !== null ? (float)$rowLama['koordinat_koreksi_y'] : null;
+        $efX = $korX ?? $x;
+        $efY = $korY ?? $y;
+        if ($efX === null || $efY === null) {
             $statusKoord = 'Luar Peta PS';
             $cLuar++;
             $catatanPieces[] = 'Titik koordinat tidak terbaca — dianggap di luar peta.';
@@ -64,8 +82,8 @@ function verifikasi_satu_kth(PDO $pdo, int $kthId, int $versiKe = 0): array {
             $cLuar++;
             $catatanPieces[] = 'Belum ada data poligon PS — dianggap di luar peta.';
         } else {
-            // Konvensi: X=lng, Y=lat
-            $diDalam = point_in_geometry($x, $y, $rings);
+            // Konvensi: X=lng, Y=lat (pakai posisi efektif = koreksi bila ada)
+            $diDalam = point_in_geometry($efX, $efY, $rings);
             $statusKoord = $diDalam ? 'Dalam Peta PS' : 'Luar Peta PS';
             if ($diDalam) {
                 $cDalam++;
@@ -91,7 +109,15 @@ function verifikasi_satu_kth(PDO $pdo, int $kthId, int $versiKe = 0): array {
             $catatan = implode(' ', $catatanPieces);
         }
 
-        $ins->execute([$u['id'], $kthId, $versiKe, $statusSK, $statusKoord, trim($catatan), $pct, $namaMirip]);
+        // Pertahankan catatan manual verifikator bila status tidak berubah
+        // (status sama => kemungkinan catatan lama adalah edit manual).
+        if ($rowLama && ($rowLama['status_sk'] ?? null) === $statusSK
+            && ($rowLama['status_koordinat'] ?? null) === $statusKoord
+            && trim((string)($rowLama['catatan'] ?? '')) !== '') {
+            $catatan = (string)$rowLama['catatan'];
+        }
+
+        $ins->execute([$u['id'], $kthId, $versiKe, $statusSK, $statusKoord, trim($catatan), $pct, $namaMirip, $korX, $korY, ($rowLama['dikoreksi_pada'] ?? null)]);
     }
 
     $rekom = ($cTidak === 0 && $cLuar === 0 && $cLebihLuas === 0) ? 'Dapat Ditindaklanjuti' : 'Perlu Revisi';

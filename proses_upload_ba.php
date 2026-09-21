@@ -75,13 +75,16 @@ try {
         }
     }
 
-    // Pastikan KTH ada
-    $kthRow = $pdo->prepare('SELECT id FROM kth WHERE id = ?');
+    // Pastikan KTH ada (+ versi aktif untuk agregat fallback)
+    $kthRow = $pdo->prepare('SELECT id, COALESCE(versi_aktif, 1) AS versi_aktif FROM kth WHERE id = ?');
     $kthRow->execute([$kthId]);
-    if (!$kthRow->fetch()) {
+    $kthInfo = $kthRow->fetch();
+    if (!$kthInfo) {
         echo json_encode(['ok' => false, 'msg' => 'KTH tidak ditemukan.']);
         exit;
     }
+    $versiBa = (int)($kthInfo['versi_aktif'] ?? 1);
+    if ($versiBa <= 0) $versiBa = 1;
 
     // Ambil laporan terbaru untuk kth_id ini
     $lapRow = $pdo->prepare('SELECT id, berkas_ba FROM laporan WHERE kth_id = ? ORDER BY id DESC LIMIT 1');
@@ -120,32 +123,59 @@ try {
             'UPDATE laporan SET berkas_ba = ?, nama_file_ba = ?, tgl_ba = ? WHERE id = ?'
         )->execute([$pathRel, $namaAsli, $tglSimpan, (int)$lap['id']]);
     } else {
-        // Belum ada laporan — buat record laporan minimal
+        // Belum ada laporan — buat record laporan minimal dari versi aktif
         $h = $pdo->prepare(
             'SELECT COUNT(*) total, SUM(status_sk="Sesuai SK PS") sesuai, SUM(status_sk!="Sesuai SK PS") tidak,
                     SUM(status_koordinat="Dalam Peta PS") dalam, SUM(status_koordinat!="Dalam Peta PS") luar
-             FROM hasil_verifikasi WHERE kth_id = ?'
+             FROM hasil_verifikasi WHERE kth_id = ? AND versi_ke = ?'
         );
-        $h->execute([$kthId]);
+        $h->execute([$kthId, $versiBa]);
         $hitung = $h->fetch() ?: [];
 
-        $pdo->prepare(
-            'INSERT INTO laporan (kth_id, tahun, total_petani, jumlah_sesuai_sk, jumlah_tidak_sesuai_sk,
-                                  jumlah_dalam_peta, jumlah_luar_peta, narasi, rekomendasi, berkas_ba, nama_file_ba, tgl_ba)
-             VALUES (?, YEAR(NOW()), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-        )->execute([
-            $kthId,
-            (int)($hitung['total'] ?? 0),
-            (int)($hitung['sesuai'] ?? 0),
-            (int)($hitung['tidak'] ?? 0),
-            (int)($hitung['dalam'] ?? 0),
-            (int)($hitung['luar'] ?? 0),
-            '',
-            'Perlu Revisi',
-            $pathRel,
-            $namaAsli,
-            $tglSimpan,
-        ]);
+        try {
+            $cekV = $pdo->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'laporan' AND COLUMN_NAME = 'versi_ke'");
+            $cekV->execute();
+            $adaVersiBa = (int)$cekV->fetchColumn() > 0;
+        } catch (Throwable $eVB) { $adaVersiBa = false; }
+
+        if ($adaVersiBa) {
+            $pdo->prepare(
+                'INSERT INTO laporan (kth_id, versi_ke, tahun, total_petani, jumlah_sesuai_sk, jumlah_tidak_sesuai_sk,
+                                      jumlah_dalam_peta, jumlah_luar_peta, narasi, rekomendasi, berkas_ba, nama_file_ba, tgl_ba)
+                 VALUES (?, ?, YEAR(NOW()), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            )->execute([
+                $kthId,
+                $versiBa,
+                (int)($hitung['total'] ?? 0),
+                (int)($hitung['sesuai'] ?? 0),
+                (int)($hitung['tidak'] ?? 0),
+                (int)($hitung['dalam'] ?? 0),
+                (int)($hitung['luar'] ?? 0),
+                '',
+                'Perlu Revisi',
+                $pathRel,
+                $namaAsli,
+                $tglSimpan,
+            ]);
+        } else {
+            $pdo->prepare(
+                'INSERT INTO laporan (kth_id, tahun, total_petani, jumlah_sesuai_sk, jumlah_tidak_sesuai_sk,
+                                      jumlah_dalam_peta, jumlah_luar_peta, narasi, rekomendasi, berkas_ba, nama_file_ba, tgl_ba)
+                 VALUES (?, YEAR(NOW()), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            )->execute([
+                $kthId,
+                (int)($hitung['total'] ?? 0),
+                (int)($hitung['sesuai'] ?? 0),
+                (int)($hitung['tidak'] ?? 0),
+                (int)($hitung['dalam'] ?? 0),
+                (int)($hitung['luar'] ?? 0),
+                '',
+                'Perlu Revisi',
+                $pathRel,
+                $namaAsli,
+                $tglSimpan,
+            ]);
+        }
     }
 
     echo json_encode([

@@ -52,6 +52,21 @@ function proses_db_simpan(string $namaKth, int $tahun, string $namaKph, string $
         $luasVal = ($luasAreal !== '' && is_numeric($luasAreal)) ? (float)$luasAreal : null;
         $tglVal = ($tanggalSk !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $tanggalSk)) ? $tanggalSk : null;
         if ($kthId) {
+            // Cegah timpa diam-diam: nama sudah ada wajib dicentang eksplisit.
+            // (Sebelumnya upload nama sama langsung menghapus seluruh data lama.)
+            // Flag dibaca dari POST langsung maupun dari data pending
+            // (alur pilih-sheet: POST kedua hanya berisi sheet).
+            $setujuTimpa = (($_POST['timpa_jika_ada'] ?? null) === '1')
+                || ((($_SESSION['pending_baru']['post']['timpa_jika_ada'] ?? null) ?? null) === '1');
+            if (!$setujuTimpa) {
+                $pdo->rollBack();
+                if (empty($_SESSION['pending_baru'])) {
+                    @unlink($dstExcel ?? '');
+                    @unlink($dstSk ?? '');
+                    @unlink($dstZip ?? '');
+                }
+                throw new RuntimeException('Nama KTH "' . $namaKth . '" SUDAH terdaftar. Upload dibatalkan agar data lama tidak tertimpa. Gunakan halaman "Perbaikan" untuk revisi, atau ulangi dengan mencentang persetujuan timpa pada formulir.');
+            }
             $kthId = (int)$kthId;
             $pdo->prepare('DELETE FROM hasil_verifikasi WHERE kth_id = ?')->execute([$kthId]);
             $pdo->prepare('DELETE FROM laporan WHERE kth_id = ?')->execute([$kthId]);
@@ -60,6 +75,9 @@ function proses_db_simpan(string $namaKth, int $tahun, string $namaKph, string $
             $pdo->prepare('DELETE FROM poligon_ps WHERE kth_id = ?')->execute([$kthId]);
             $pdo->prepare('UPDATE kth SET nomor_sk = ?, nama_kph = ?, luas_areal = ?, tanggal_sk = ?, tahun_usulan = ?, nama_kth = ? WHERE id = ?')
                 ->execute([$nomorSk ?: null, $namaKph ?: null, $luasVal, $tglVal, $tahun ?: null, $namaKth, $kthId]);
+            @file_put_contents(__DIR__ . '/hapus.log',
+                date('Y-m-d H:i:s') . ' | TIMPA KASUS (upload ulang disetujui) | id=' . $kthId
+                . ' | nama=' . $namaKth . ' | ip=' . ($_SERVER['REMOTE_ADDR'] ?? '-') . PHP_EOL, FILE_APPEND);
         } else {
             $pdo->prepare('INSERT INTO kth (nama_kth, nomor_sk, nama_kph, luas_areal, tanggal_sk, tahun_usulan) VALUES (?,?,?,?,?,?)')
                 ->execute([$namaKth, $nomorSk ?: null, $namaKph ?: null, $luasVal, $tglVal, $tahun ?: null]);

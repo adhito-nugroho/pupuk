@@ -5,12 +5,33 @@ require_once __DIR__ . '/lib/db.php';
 require_once __DIR__ . '/lib/helpers.php';
 require_once __DIR__ . '/lib/layout.php';
 
-// Query kasus
-$rows = db()->query('SELECT k.*,
-    (SELECT COUNT(*) FROM usulan_pupuk u WHERE u.kth_id = k.id AND u.versi_ke = COALESCE(k.versi_aktif, 1)) AS jml_usulan,
-    (SELECT COUNT(*) FROM sk_anggota s WHERE s.kth_id = k.id) AS jml_sk,
-    (SELECT rekomendasi FROM laporan l WHERE l.kth_id = k.id ORDER BY l.id DESC LIMIT 1) AS rekomendasi
-  FROM kth k ORDER BY k.id DESC')->fetchAll();
+// Query kasus (rekomendasi mengikuti versi aktif bila kolom laporan.versi_ke
+// sudah ada; fallback ke laporan terakhir untuk database lama)
+$adaVersiLap = false;
+try {
+    $cekV = db()->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'laporan' AND COLUMN_NAME = 'versi_ke'");
+    $cekV->execute();
+    $adaVersiLap = (int)$cekV->fetchColumn() > 0;
+} catch (Throwable $eV) { $adaVersiLap = false; }
+if ($adaVersiLap) {
+    $rows = db()->query('SELECT k.*,
+        (SELECT COUNT(*) FROM usulan_pupuk u WHERE u.kth_id = k.id AND u.versi_ke = COALESCE(k.versi_aktif, 1)) AS jml_usulan,
+        (SELECT COUNT(*) FROM sk_anggota s WHERE s.kth_id = k.id) AS jml_sk,
+        (SELECT rekomendasi FROM laporan l WHERE l.kth_id = k.id ORDER BY l.id DESC LIMIT 1) AS rekomendasi_global,
+        (SELECT rekomendasi FROM laporan l WHERE l.kth_id = k.id AND l.versi_ke = COALESCE(k.versi_aktif, 1) ORDER BY l.id DESC LIMIT 1) AS rekomendasi_versi
+      FROM kth k ORDER BY k.id DESC')->fetchAll();
+    foreach ($rows as &$r) {
+        $r['rekomendasi'] = (($r['rekomendasi_versi'] ?? null) !== null && $r['rekomendasi_versi'] !== '')
+            ? $r['rekomendasi_versi'] : ($r['rekomendasi_global'] ?? null);
+    }
+    unset($r);
+} else {
+    $rows = db()->query('SELECT k.*,
+        (SELECT COUNT(*) FROM usulan_pupuk u WHERE u.kth_id = k.id AND u.versi_ke = COALESCE(k.versi_aktif, 1)) AS jml_usulan,
+        (SELECT COUNT(*) FROM sk_anggota s WHERE s.kth_id = k.id) AS jml_sk,
+        (SELECT rekomendasi FROM laporan l WHERE l.kth_id = k.id ORDER BY l.id DESC LIMIT 1) AS rekomendasi
+      FROM kth k ORDER BY k.id DESC')->fetchAll();
+}
 
 // Ambil seluruh riwayat versi usulan
 $semuaVersi = db()->query('SELECT * FROM kth_versi_usulan ORDER BY kth_id ASC, versi_ke DESC')->fetchAll();
@@ -222,14 +243,17 @@ layout_head('Buku Register Kasus', 'daftar');
                  class="px-2 py-1 border border-kadaster-border text-forest-900 hover:bg-forest-100 hover:border-forest-900 bg-forest-50/80 text-[11px] font-semibold transition-colors flex items-center gap-1">
                 <span>Perbaikan</span>
               </a>
-              <a href="hapus.php?kth_id=<?= (int)$r['id'] ?>"
-                 onclick="return confirm('Hapus seluruh berkas kasus ini beserta semua versi perbaikannya?')"
-                 title="Hapus Berkas Kasus Lengkap"
-                 class="px-1.5 py-1 border border-audit-revisiBorder text-audit-revisi hover:bg-audit-revisiBg text-[11px] transition-colors ml-1">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                </svg>
-              </a>
+              <form action="hapus.php" method="post" class="inline m-0 ml-1"
+                 onsubmit="return confirm('Hapus seluruh berkas kasus ini beserta semua versi perbaikannya?')">
+                <input type="hidden" name="kth_id" value="<?= (int)$r['id'] ?>">
+                <button type="submit"
+                   title="Hapus Berkas Kasus Lengkap"
+                   class="px-1.5 py-1 border border-audit-revisiBorder text-audit-revisi hover:bg-audit-revisiBg text-[11px] transition-colors">
+                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                 </svg>
+                </button>
+              </form>
             </div>
           </td>
         </tr>
@@ -345,15 +369,20 @@ layout_head('Buku Register Kasus', 'daftar');
                         </a>
 
                         <?php if ($vNum > 1): ?>
-                        <a href="hapus_versi.php?kth_id=<?= $kthId ?>&versi_ke=<?= $vNum ?>&from=index"
-                           onclick="return confirm('Apakah Anda yakin ingin MENGHAPUS versi perbaikan v<?= $vNum ?> ini? Data verifikasi versi ini akan dihapus permanen dan versi aktif dialihkan ke versi terbaru lainnya.')"
-                           title="Hapus Versi Perbaikan <?= $vNum ?>"
-                           class="px-2 py-1 text-[11px] font-semibold border border-audit-revisiBorder text-audit-revisi hover:bg-audit-revisiBg rounded inline-flex items-center gap-1 ml-1">
-                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                          </svg>
-                          <span>Hapus</span>
-                        </a>
+                        <form action="hapus_versi.php" method="post" class="inline m-0 ml-1"
+                           onsubmit="return confirm('Apakah Anda yakin ingin MENGHAPUS versi perbaikan v<?= $vNum ?> ini? Data verifikasi versi ini akan dihapus permanen dan versi aktif dialihkan ke versi terbaru lainnya.')">
+                          <input type="hidden" name="kth_id" value="<?= $kthId ?>">
+                          <input type="hidden" name="versi_ke" value="<?= $vNum ?>">
+                          <input type="hidden" name="from" value="index">
+                          <button type="submit"
+                             title="Hapus Versi Perbaikan <?= $vNum ?>"
+                             class="px-2 py-1 text-[11px] font-semibold border border-audit-revisiBorder text-audit-revisi hover:bg-audit-revisiBg rounded inline-flex items-center gap-1">
+                           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                           </svg>
+                           <span>Hapus</span>
+                          </button>
+                        </form>
                         <?php endif; ?>
                       </div>
                     </div>

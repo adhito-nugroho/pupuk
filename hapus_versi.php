@@ -7,9 +7,15 @@ require_once __DIR__ . '/lib/verify.php';
 
 if (session_status() !== PHP_SESSION_ACTIVE) @session_start();
 
-$kthId   = (int)($_POST['kth_id'] ?? $_GET['kth_id'] ?? 0);
-$versiKe = (int)($_POST['versi_ke'] ?? $_GET['versi_ke'] ?? 0);
-$from    = (string)($_POST['from'] ?? $_GET['from'] ?? 'index');
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    flash_set('error', 'Penghapusan versi harus via tombol Hapus (POST).');
+    header('Location: index.php');
+    exit;
+}
+
+$kthId   = (int)($_POST['kth_id'] ?? 0);
+$versiKe = (int)($_POST['versi_ke'] ?? 0);
+$from    = (string)($_POST['from'] ?? 'index');
 
 if (!$kthId || $versiKe <= 1) {
     flash_set('error', 'Versi usulan awal (v1) tidak dapat dihapus. Anda hanya dapat menghapus putaran usulan perbaikan (v2, v3, dst.).');
@@ -67,10 +73,23 @@ try {
     $pdo->prepare('UPDATE kth SET versi_aktif = ? WHERE id = ?')->execute([$newAktif, $kthId]);
 
     // 6. Sinkronkan laporan dengan versi aktif yang baru
+    // (utamakan baris laporan versi tersebut; fallback ke terakhir utk data lama)
     $hasilTerbaru = verifikasi_satu_kth($pdo, $kthId, $newAktif);
-    $lapRow = $pdo->prepare('SELECT id FROM laporan WHERE kth_id = ? ORDER BY id DESC LIMIT 1');
-    $lapRow->execute([$kthId]);
-    $lap = $lapRow->fetch();
+    $lap = false;
+    try {
+        $cekV = $pdo->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'laporan' AND COLUMN_NAME = 'versi_ke'");
+        $cekV->execute();
+        if ((int)$cekV->fetchColumn() > 0) {
+            $lapRowV = $pdo->prepare('SELECT id FROM laporan WHERE kth_id = ? AND versi_ke = ? ORDER BY id DESC LIMIT 1');
+            $lapRowV->execute([$kthId, $newAktif]);
+            $lap = $lapRowV->fetch();
+        }
+    } catch (Throwable $eLV) { $lap = false; }
+    if (!$lap) {
+        $lapRow = $pdo->prepare('SELECT id FROM laporan WHERE kth_id = ? ORDER BY id DESC LIMIT 1');
+        $lapRow->execute([$kthId]);
+        $lap = $lapRow->fetch();
+    }
     if ($lap) {
         $narasiBaru = buat_narasi_default($kth, (int)($kth['tahun_usulan'] ?? date('Y')), $hasilTerbaru);
         $pdo->prepare('
@@ -91,6 +110,11 @@ try {
     }
 
     $pdo->commit();
+
+    @file_put_contents(__DIR__ . '/hapus.log',
+        date('Y-m-d H:i:s') . ' | HAPUS VERSI | kth_id=' . $kthId
+        . ' | versi=' . $versiKe . ' | label=' . ($ver['label_versi'] ?? '-')
+        . ' | ip=' . ($_SERVER['REMOTE_ADDR'] ?? '-') . PHP_EOL, FILE_APPEND);
 
     flash_set('ok', '✅ Versi perbaikan ' . ($ver['label_versi'] ?: ('v' . $versiKe)) . ' berhasil dihapus. Versi aktif dialihkan ke Versi ' . $newAktif . '.');
 } catch (Throwable $e) {

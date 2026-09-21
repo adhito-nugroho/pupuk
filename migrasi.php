@@ -114,6 +114,23 @@ tambah_kolom($pdo, 'hasil_verifikasi', 'versi_ke',
     "INT NOT NULL DEFAULT 1 COMMENT 'Nomor versi hasil verifikasi'",
     $hasil, $ada_error);
 
+tambah_kolom($pdo, 'laporan', 'versi_ke',
+    "INT NOT NULL DEFAULT 1 COMMENT 'Nomor versi usulan yang dilaporkan'",
+    $hasil, $ada_error);
+
+// Backfill versi_ke laporan lama mengikuti versi aktif KTH masing-masing
+try {
+    $nLap = (int)$pdo->query('SELECT COUNT(*) FROM laporan WHERE versi_ke IS NULL OR versi_ke <= 0')->fetchColumn();
+    if ($nLap > 0) {
+        $pdo->exec('UPDATE laporan l JOIN kth k ON k.id = l.kth_id SET l.versi_ke = COALESCE(NULLIF(k.versi_aktif, 0), 1) WHERE l.versi_ke IS NULL OR l.versi_ke <= 0');
+        $hasil[] = ['status' => 'ok', 'msg' => "Berhasil mem-backfill {$nLap} baris versi laporan (mengikuti versi aktif KTH)."];
+    } else {
+        $hasil[] = ['status' => 'skip', 'msg' => 'Kolom `laporan`.`versi_ke` sudah terisi — dilewati.'];
+    }
+} catch (Throwable $eLap) {
+    $hasil[] = ['status' => 'skip', 'msg' => 'Backfill versi laporan dilewati: ' . $eLap->getMessage()];
+}
+
 // Backfill data versi 1 untuk KTH yang sudah ada jika tabel kth_versi_usulan masih kosong
 try {
     $stKth = $pdo->query('SELECT id, nama_kth, dibuat_pada FROM kth');

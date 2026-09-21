@@ -24,7 +24,12 @@ if (!$kth) {
 
 $daftarVersi = ambil_daftar_versi($pdo, $kthId);
 $versiAktif = (int)($kth['versi_aktif'] ?? 1);
-$nextVersiKe = count($daftarVersi) + 1;
+// Nomor berikutnya = MAX(versi_ke)+1 (sama dengan rumus di
+// proses_upload_perbaikan.php agar tidak lompat/duplikat setelah hapus versi tengah)
+$maxVersi = 0;
+foreach ($daftarVersi as $vv) { $maxVersi = max($maxVersi, (int)($vv['versi_ke'] ?? 0)); }
+$nextVersiKe = $maxVersi + 1;
+if ($nextVersiKe <= 1) $nextVersiKe = 2;
 
 layout_head('Riwayat & Upload Perbaikan — ' . ($kth['nama_kth'] ?? ''));
 layout_kth_subnav($kth, 'perbaikan', $versiAktif, $daftarVersi);
@@ -156,15 +161,20 @@ layout_kth_subnav($kth, 'perbaikan', $versiAktif, $daftarVersi);
               </a>
 
               <?php if ($vNum > 1): ?>
-              <a href="hapus_versi.php?kth_id=<?= $kthId ?>&versi_ke=<?= $vNum ?>&from=perbaikan"
-                 onclick="return confirm('Apakah Anda yakin ingin MENGHAPUS versi perbaikan v<?= $vNum ?> ini? Data verifikasi versi ini akan dihapus permanen dan versi aktif dialihkan ke versi terbaru lainnya.')"
-                 title="Hapus Versi Perbaikan <?= $vNum ?>"
-                 class="px-2.5 py-1.5 text-xs font-semibold border border-audit-revisiBorder text-audit-revisi hover:bg-audit-revisiBg rounded inline-flex items-center gap-1">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                </svg>
-                <span>Hapus Versi</span>
-              </a>
+              <form action="hapus_versi.php" method="post" class="inline m-0"
+                 onsubmit="return confirm('Apakah Anda yakin ingin MENGHAPUS versi perbaikan v<?= $vNum ?> ini? Data verifikasi versi ini akan dihapus permanen dan versi aktif dialihkan ke versi terbaru lainnya.')">
+                <input type="hidden" name="kth_id" value="<?= $kthId ?>">
+                <input type="hidden" name="versi_ke" value="<?= $vNum ?>">
+                <input type="hidden" name="from" value="perbaikan">
+                <button type="submit"
+                   title="Hapus Versi Perbaikan <?= $vNum ?>"
+                   class="px-2.5 py-1.5 text-xs font-semibold border border-audit-revisiBorder text-audit-revisi hover:bg-audit-revisiBg rounded inline-flex items-center gap-1">
+                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                 </svg>
+                 <span>Hapus Versi</span>
+                </button>
+              </form>
               <?php endif; ?>
             </div>
           </div>

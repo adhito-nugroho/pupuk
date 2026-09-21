@@ -22,6 +22,17 @@ $st = $pdo->prepare('SELECT * FROM laporan WHERE kth_id = ? ORDER BY id DESC LIM
 $st->execute([$kthId]);
 $lap = $st->fetch();
 
+// Utamakan laporan versi terpilih; fallback ke laporan terakhir (kompatibel data lama)
+try {
+    $cekV = $pdo->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'laporan' AND COLUMN_NAME = 'versi_ke'");
+    $cekV->execute();
+    if ((int)$cekV->fetchColumn() > 0) {
+        $stV = $pdo->prepare('SELECT * FROM laporan WHERE kth_id = ? AND versi_ke = ? ORDER BY id DESC LIMIT 1');
+        $stV->execute([$kthId, $versiAktif]);
+        if ($lapV = $stV->fetch()) $lap = $lapV;
+    }
+} catch (Throwable $eLapV) { /* fallback sudah di $lap */ }
+
 $h = $pdo->prepare('SELECT COUNT(*) total,
   SUM(status_sk = "Sesuai SK PS") sesuai,
   SUM(status_sk != "Sesuai SK PS") tidak,
@@ -111,15 +122,15 @@ $baTgl   = $lap['tgl_ba']       ?? null;
     </div>
 
     <div class="flex flex-wrap items-center gap-2">
-      <a href="hasil.php?kth_id=<?= $kthId ?>" class="btn-kadaster px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium">
+      <a href="hasil.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>" class="btn-kadaster px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium">
         <svg class="w-3.5 h-3.5 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
         Kembali ke Tahap 03 — Uji Spasial &amp; Titik
       </a>
-      <a href="export.php?kth_id=<?= $kthId ?>" class="btn-kadaster px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-700 hover:text-forest-900 border-kadaster-border">
+      <a href="export.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>" class="btn-kadaster px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-700 hover:text-forest-900 border-kadaster-border">
         <svg class="w-3.5 h-3.5 text-forest-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
         Ekspor Excel Rekap
       </a>
-      <a href="cetak_peta.php?kth_id=<?= $kthId ?>" target="_blank" class="btn-kadaster px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-700 hover:text-forest-900">
+      <a href="cetak_peta.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>" target="_blank" class="btn-kadaster px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-700 hover:text-forest-900">
         <svg class="w-3.5 h-3.5 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
         Cetak Peta Lampiran
       </a>
@@ -256,6 +267,7 @@ $baTgl   = $lap['tgl_ba']       ?? null;
 
   <form action="proses_laporan.php" method="post" class="space-y-5">
     <input type="hidden" name="kth_id" value="<?= $kthId ?>">
+    <input type="hidden" name="v" value="<?= $versiAktif ?>">
     
     <div class="grid md:grid-cols-3 gap-4">
       <div>
@@ -301,11 +313,11 @@ $baTgl   = $lap['tgl_ba']       ?? null;
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
           Simpan Berita Acara Rekomendasi
         </button>
-        <a href="export.php?kth_id=<?= $kthId ?>" class="btn-kadaster px-4 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-700 hover:text-forest-900">
+        <a href="export.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>" class="btn-kadaster px-4 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-700 hover:text-forest-900">
           <svg class="w-3.5 h-3.5 text-forest-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
           Unduh File Excel
         </a>
-        <a href="cetak_peta.php?kth_id=<?= $kthId ?>" target="_blank" class="btn-kadaster px-4 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-700 hover:text-forest-900">
+        <a href="cetak_peta.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>" target="_blank" class="btn-kadaster px-4 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-700 hover:text-forest-900">
           <svg class="w-3.5 h-3.5 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
           Cetak Peta Lampiran
         </a>
@@ -505,6 +517,7 @@ $baTgl   = $lap['tgl_ba']       ?? null;
     <div class="bg-kadaster-light border border-kadaster-border rounded p-3 font-mono text-[11px] text-ink whitespace-pre-wrap leading-relaxed">Berdasarkan hasil verifikasi data usulan pupuk subsidi tahun [TAHUN] terdapat sebanyak [TOTAL] petani. Dari hasil telaah diperoleh data bahwa sejumlah [JUMLAH_SESUAI] petani sudah sesuai dengan SK [NOMOR_SK], terdapat [JUMLAH_TIDAK_SESUAI] petani yang belum masuk ke dalam SK tersebut. Titik koordinat petani yang mengusulkan pupuk, sejumlah [JUMLAH_DALAM_PETA] berada dalam peta areal [NAMA_KTH] dan [JUMLAH_LUAR_PETA] berada di luar peta. Total luas lahan yang diusulkan adalah seluas [TOTAL_LUAS] Ha atau [PERSEN_LUAS]% dari total luasan dalam SK PS ([LUAS_SK] Ha). Seluruh usulan petani memenuhi ketentuan batas maksimal luasan (tidak lebih dari 2 Ha per orang).</div>
     <form action="proses_laporan.php" method="post" class="mt-3">
       <input type="hidden" name="kth_id" value="<?= $kthId ?>">
+      <input type="hidden" name="v" value="<?= $versiAktif ?>">
       <input type="hidden" name="reset_template" value="1">
       <button type="submit" class="text-forest-700 hover:text-forest-900 text-[11px] font-semibold inline-flex items-center gap-1.5">
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
