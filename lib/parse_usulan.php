@@ -108,8 +108,9 @@ function parse_excel_usulan(string $path): array {
         if (strlen(norm_nik($nik)) < 10 && mb_strlen(norm_nama($nama), 'UTF-8') < 3) {
             continue;
         }
-        $x = clean_koordinat($xRaw);
-        $y = clean_koordinat($yRaw);
+        $coord = parse_dan_konversi_koordinat($xRaw, $yRaw);
+        $x = $coord['x'];
+        $y = $coord['y'];
         if ($xRaw !== '' && $x === null) $errors[] = "Baris $r: koordinat X tidak terbaca ('$xRaw').";
         if ($yRaw !== '' && $y === null) $errors[] = "Baris $r: koordinat Y tidak terbaca ('$yRaw').";
         $luas = str_replace(',', '.', (string)$get($colMap['luas']));
@@ -133,7 +134,22 @@ function parse_excel_usulan(string $path): array {
             'luas' => is_numeric($luas) ? (float)$luas : null,
             'no_sk' => (string)$get($colMap['no_sk']),
             'x_raw' => $xRaw, 'y_raw' => $yRaw, 'x' => $x, 'y' => $y,
+            'tipe_koordinat' => $coord['tipe'] ?? 'Geografis (WGS84)',
+            'is_utm' => $coord['is_utm'] ?? false,
         ];
     }
-    return ['header_row' => $headerRow, 'rows' => $rows, 'errors' => $errors];
+    
+    $utmCount = 0;
+    foreach ($rows as $rw) {
+        if (!empty($rw['is_utm'])) $utmCount++;
+    }
+    $formatKoordinat = ($utmCount > 0) ? 'UTM Zona 49S (Otomatis Dikonversi ke Geografis WGS84)' : 'Geografis (WGS84)';
+
+    return [
+        'header_row' => $headerRow,
+        'rows' => $rows,
+        'errors' => $errors,
+        'format_koordinat' => $formatKoordinat,
+        'utm_count' => $utmCount
+    ];
 }

@@ -231,7 +231,7 @@ wizard(1);
       <div class="font-bold text-ink mb-1 uppercase text-[11px] tracking-wider">Petunjuk Teknis Dokumen Masukan</div>
       <div class="text-[11.5px] text-ink-muted leading-relaxed space-y-1">
         <p>• <b>Konversi SK PDF:</b> Bila daftar anggota masih dalam bentuk PDF SK scan resmi, gunakan konverter offline (<span class="font-mono text-ink">Jalankan_Konverter.bat</span>) untuk menghasilkan file Excel anggota sebelum diunggah.</p>
-        <p>• <b>Uji Koordinat Lahan:</b> Nilai titik koordinat otomatis diuraikan ke derajat desimal dan divalidasi langsung ke dalam poligon batas kawasan PS melalui algoritma spasial.</p>
+        <p>• <b>Dukungan Format Koordinat (Geografis &amp; UTM):</b> Sistem mendukung koordinat format <b>Geografis WGS84</b> (derajat desimal, contoh: <span class="font-mono text-ink">X: 111.7017, Y: -7.2923</span>) maupun proyeksi metrik <b>UTM Zona 49S</b> (meter, contoh: <span class="font-mono text-ink">X: 570790, Y: 9182577</span>). Sistem otomatis mendeteksi dan mengonversi format UTM ke derajat desimal untuk analisis spasial.</p>
       </div>
     </div>
   </div>

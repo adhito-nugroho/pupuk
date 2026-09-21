@@ -133,8 +133,8 @@ function proses_db_simpan(string $namaKth, int $tahun, string $namaKph, string $
         $pdo->prepare('INSERT INTO poligon_ps (kth_id, nama_layer, geometry_json, jumlah_ring, sumber_file) VALUES (?,?,?,?,?)')
             ->execute([$kthId, $namaLayer, json_encode(['features' => $shp['features']], JSON_UNESCAPED_UNICODE), $shp['total_ring'], basename($dstZip)]);
         $pdo->commit();
-        unset($_SESSION['pending_baru']);
-        $pesan = 'Upload berhasil: ' . count($ex['rows']) . ' baris usulan pupuk, ' . count($_SESSION['sk_parse'][$kthId]['rows']) . ' baris daftar anggota SK' . ($sheetSk ? " (sheet: {$sheetSk})" : '') . ', ' . $shp['total_fitur'] . ' fitur poligon (' . $shp['total_ring'] . ' ring). Silakan tinjau dan konfirmasi anggota SK.';
+        $infoKoord = !empty($ex['format_koordinat']) ? ' (' . $ex['format_koordinat'] . ')' : '';
+        $pesan = 'Upload berhasil: ' . count($ex['rows']) . ' baris usulan pupuk' . $infoKoord . ', ' . count($_SESSION['sk_parse'][$kthId]['rows']) . ' baris daftar anggota SK' . ($sheetSk ? " (sheet: {$sheetSk})" : '') . ', ' . $shp['total_fitur'] . ' fitur poligon (' . $shp['total_ring'] . ' ring). Silakan tinjau dan konfirmasi anggota SK.';
         if ($skParsed['perlu_dicek_count'] > 0) {
             $pesan .= " (Perhatian: ada {$skParsed['perlu_dicek_count']} baris yang ditandai kuning dan perlu dicek manual).";
         }

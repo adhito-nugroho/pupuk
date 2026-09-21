@@ -98,7 +98,7 @@ layout_kth_subnav($kth, 'perbaikan', $versiAktif, $daftarVersi);
             <span>🛡️</span> Data Lama Terlindungi
           </div>
           <p class="text-[11px] leading-relaxed">
-            Data usulan versi terdahulu tetap tersimpan utuh di database. Sistem akan otomatis memverifikasi berkas perbaikan ini terhadap SK dan Peta SHP yang sudah terdaftar.
+            Data usulan versi terdahulu tetap tersimpan utuh di database. Sistem akan otomatis memverifikasi berkas perbaikan ini terhadap SK dan Peta SHP yang sudah terdaftar. Mendukung format koordinat Geografis (WGS84) maupun <b>UTM Zona 49S</b> (otomatis dikonversi).
           </p>
         </div>
 

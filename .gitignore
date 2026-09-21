@@ -16,3 +16,6 @@ db_export*.sql
 # Archives
 *.zip
 *.rar
+
+# Excel temporary lock files
+~$*

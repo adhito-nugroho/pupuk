@@ -22,31 +22,162 @@ function norm_nama(?string $s): string {
 
 /**
  * Bersihkan koordinat mentah Excel ke float.
- * Contoh: "X: 111. 701717" -> 111.701717 ; "Y: -7. 292323" -> -7.292323
- * Menangani: prefix X:/Y:/Long/Lat, spasi ganjil di tengah angka,
- * koma desimal ala Indonesia, dan angka negatif.
- * Mengembalikan null bila tidak bisa di-parse.
+ * Menangani:
+ * - Format desimal standar: "111.701717", "-7.292323"
+ * - Format desimal koma Indonesia: "111,701717", "-7,292323"
+ * - Format metrik UTM ribuan koma/titik: "570790,170926", "9182577,773106", "570.790,170926", "9.182.577,773106"
+ * - Format prefix: "X: ...", "Y: ...", "Long: ...", "Lat: ..."
+ * - Spasi ganjil di tengah angka.
  */
 function clean_koordinat($raw): ?float {
     if ($raw === null) return null;
     $s = trim((string)$raw);
     if ($s === '') return null;
-    // Buang prefix "X:", "Y:", "Long.", "Lat." dsb di awal
-    $s = preg_replace('/^\s*[A-Za-z\.]+\s*:\s*/', '', $s) ?? $s;
-    // Buang semua spasi di tengah angka ("111. 701717" -> "111.701717")
+    // Buang prefix "X:", "Y:", "Long.", "Lat.", "Easting:", dsb di awal
+    $s = preg_replace('/^\s*[A-Za-z\.\-_]+\s*:\s*/', '', $s) ?? $s;
+    // Buang semua spasi di tengah angka
     $s = preg_replace('/\s+/', '', $s) ?? $s;
-    // Ambil token angka pertama (termasuk negatif & desimal koma/titik)
-    if (!preg_match('/[-+]?\d+(?:[\.,]\d+)?/', $s, $m)) return null;
+    // Ambil deretan angka beserta minus/plus, titik, dan koma
+    if (!preg_match('/[-+]?[\d\.,]+/', $s, $m)) return null;
     $num = $m[0];
-    // Normalisasi desimal: "111,701717" -> "111.701717".
-    // Jika ada titik sekaligus koma, anggap koma = pemisah ribuan -> buang koma.
-    if (strpos($num, ',') !== false && strpos($num, '.') !== false) {
-        $num = str_replace(',', '', $num);
-    } else {
+
+    $lastDot = strrpos($num, '.');
+    $lastComma = strrpos($num, ',');
+
+    if ($lastDot !== false && $lastComma !== false) {
+        if ($lastComma > $lastDot) {
+            // Format Indo: 9.182.577,773106 -> koma adalah desimal
+            $num = str_replace('.', '', substr($num, 0, $lastComma)) . '.' . substr($num, $lastComma + 1);
+        } else {
+            // Format US: 9,182,577.773106 -> titik adalah desimal
+            $num = str_replace(',', '', substr($num, 0, $lastDot)) . '.' . substr($num, $lastDot + 1);
+        }
+    } elseif ($lastComma !== false) {
+        // Hanya ada koma -> ubah ke titik desimal
         $num = str_replace(',', '.', $num);
+    } elseif ($lastDot !== false) {
+        // Jika ada lebih dari 1 titik (misal 9.182.577 tanpa desimal)
+        if (substr_count($num, '.') > 1) {
+            $num = str_replace('.', '', $num);
+        }
     }
+
     if (!is_numeric($num)) return null;
     return (float)$num;
+}
+
+/**
+ * Konversi koordinat proyeksi UTM WGS84 ke Geografis (Longitude & Latitude Desimal).
+ * Menggunakan rumus konversi ellipsoid WGS84 presisi tinggi (Karney / USGS).
+ * Default zona 49S (wilayah Jawa Timur / Bojonegoro).
+ */
+function utm_to_latlng(float $easting, float $northing, int $zone = 49, bool $southHemi = true): array {
+    $a = 6378137.0; // WGS84 semi-major axis
+    $f = 1 / 298.257223563; // flattening
+    $b = $a * (1 - $f);
+    $eSq = ($a * $a - $b * $b) / ($a * $a);
+    $ePrimeSq = ($a * $a - $b * $b) / ($b * $b);
+    $k0 = 0.9996;
+
+    $x = $easting - 500000.0;
+    $y = $southHemi ? ($northing - 10000000.0) : $northing;
+
+    $m = $y / $k0;
+    $e1 = (1 - sqrt(1 - $eSq)) / (1 + sqrt(1 - $eSq));
+    $mu = $m / ($a * (1 - $eSq / 4 - 3 * pow($eSq, 2) / 64 - 5 * pow($eSq, 3) / 256));
+
+    $phi1 = $mu + (3 * $e1 / 2 - 27 * pow($e1, 3) / 32) * sin(2 * $mu)
+                 + (21 * pow($e1, 2) / 16 - 55 * pow($e1, 4) / 32) * sin(4 * $mu)
+                 + (151 * pow($e1, 3) / 96) * sin(6 * $mu)
+                 + (1097 * pow($e1, 4) / 512) * sin(8 * $mu);
+
+    $sinPhi1 = sin($phi1);
+    $cosPhi1 = cos($phi1);
+    $tanPhi1 = tan($phi1);
+
+    $n1 = $a / sqrt(1 - $eSq * $sinPhi1 * $sinPhi1);
+    $t1 = $tanPhi1 * $tanPhi1;
+    $c1 = $ePrimeSq * $cosPhi1 * $cosPhi1;
+    $r1 = $a * (1 - $eSq) / pow(1 - $eSq * $sinPhi1 * $sinPhi1, 1.5);
+    $d = $x / ($n1 * $k0);
+
+    $lat = $phi1 - ($n1 * $tanPhi1 / $r1) * (
+        pow($d, 2) / 2
+        - (5 + 3 * $t1 + 10 * $c1 - 4 * pow($c1, 2) - 9 * $ePrimeSq) * pow($d, 4) / 24
+        + (61 + 90 * $t1 + 298 * $c1 + 45 * pow($t1, 2) - 252 * $ePrimeSq - 3 * pow($c1, 2)) * pow($d, 6) / 720
+    );
+
+    $lng0 = ($zone - 1) * 6 - 180 + 3; // central meridian
+    $lng = deg2rad($lng0) + (
+        $d
+        - (1 + 2 * $t1 + $c1) * pow($d, 3) / 6
+        + (5 - 2 * $c1 + 28 * $t1 - 3 * pow($c1, 2) + 8 * $ePrimeSq + 24 * pow($t1, 2)) * pow($d, 5) / 120
+    ) / $cosPhi1;
+
+    return [
+        'lng' => round(rad2deg($lng), 7),
+        'lat' => round(rad2deg($lat), 7)
+    ];
+}
+
+/**
+ * Deteksi cerdas format koordinat (Geografis WGS84 desimal atau UTM Metrik)
+ * dan konversikan ke Longitude & Latitude derajat desimal.
+ * Juga menangani kasus kolom terbalik (X memuat Latitude/Northing dan Y memuat Longitude/Easting).
+ */
+function parse_dan_konversi_koordinat($xRaw, $yRaw, int $defaultZone = 49): array {
+    $xClean = clean_koordinat($xRaw);
+    $yClean = clean_koordinat($yRaw);
+
+    if ($xClean === null || $yClean === null) {
+        return [
+            'x' => $xClean,
+            'y' => $yClean,
+            'tipe' => null,
+            'is_utm' => false
+        ];
+    }
+
+    // 1. Deteksi format UTM (Universal Transverse Mercator Zona Selatan / Jawa)
+    // Easting ~ 100.000 s.d. 950.000 meter. Northing ~ 8.000.000 s.d. 10.000.000 meter.
+    $isUtmNormal = ($xClean >= 100000 && $xClean <= 950000) && ($yClean >= 8000000 && $yClean <= 10000000);
+    $isUtmSwapped = ($yClean >= 100000 && $yClean <= 950000) && ($xClean >= 8000000 && $xClean <= 10000000);
+
+    if ($isUtmNormal || $isUtmSwapped) {
+        $easting  = $isUtmNormal ? $xClean : $yClean;
+        $northing = $isUtmNormal ? $yClean : $xClean;
+
+        $geo = utm_to_latlng($easting, $northing, $defaultZone, true);
+        return [
+            'x' => $geo['lng'],
+            'y' => $geo['lat'],
+            'tipe' => 'UTM Zona ' . $defaultZone . 'S',
+            'is_utm' => true,
+            'utm_easting' => $easting,
+            'utm_northing' => $northing
+        ];
+    }
+
+    // 2. Deteksi Format Geografis WGS84 (Derajat Desimal)
+    // Longitude Indonesia ~ 90 s.d. 145. Latitude ~ -15 s.d. 15.
+    $isGeoNormal = ($xClean >= 90 && $xClean <= 145) && ($yClean >= -15 && $yClean <= 15);
+    $isGeoSwapped = ($yClean >= 90 && $yClean <= 145) && ($xClean >= -15 && $xClean <= 15);
+
+    if ($isGeoSwapped) {
+        return [
+            'x' => $yClean, // Longitude
+            'y' => $xClean, // Latitude
+            'tipe' => 'Geografis (WGS84)',
+            'is_utm' => false
+        ];
+    }
+
+    return [
+        'x' => $xClean,
+        'y' => $yClean,
+        'tipe' => 'Geografis (WGS84)',
+        'is_utm' => false
+    ];
 }
 
 /**
