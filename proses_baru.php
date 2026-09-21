@@ -20,6 +20,31 @@ function gagal(string $msg): void {
 function proses_db_simpan(string $namaKth, int $tahun, string $namaKph, string $nomorSk, string $luasAreal, string $tanggalSk, string $dstExcel, string $dstSk, string $dstZip, ?string $sheetSk, bool $isConfirmSheet): void {
     $pdo = db();
     try {
+        // 1) Validasi & parsing semua file SEBELUM menghapus DB — jika gagal, data lama tetap aman
+        try {
+            $ex = parse_excel_usulan($dstExcel);
+        } catch (Throwable $e) {
+            throw new RuntimeException('Gagal parsing Excel usulan pupuk: ' . $e->getMessage());
+        }
+        if (!count($ex['rows'])) {
+            throw new RuntimeException('Excel usulan tidak menghasilkan baris data (pastikan terdapat baris header NIK + NAMA).');
+        }
+        try {
+            $skParsed = parse_excel_sk($dstSk, $sheetSk);
+        } catch (Throwable $e) {
+            throw new RuntimeException('Gagal membaca file Excel/CSV anggota SK' . ($sheetSk ? " (sheet '{$sheetSk}')" : '') . ': ' . $e->getMessage());
+        }
+        if (!count($skParsed['rows'])) {
+            throw new RuntimeException('File SK anggota tidak menghasilkan baris data pada sheet ' . ($sheetSk ? "'{$sheetSk}'" : 'aktif') . ' (pastikan header NIK + NAMA ada). Coba pilih sheet lain.');
+        }
+        try {
+            $shp = parse_shapefile_zip($dstZip, $namaKth);
+        } catch (Throwable $e) {
+            throw new RuntimeException('Gagal parsing shapefile: ' . $e->getMessage());
+        }
+        if (!$shp['total_fitur']) {
+            throw new RuntimeException('Shapefile tidak berisi fitur poligon yang valid.');
+        }
         $pdo->beginTransaction();
         $st = $pdo->prepare('SELECT id FROM kth WHERE LOWER(nama_kth) = LOWER(?) LIMIT 1');
         $st->execute([$namaKth]);
@@ -40,14 +65,6 @@ function proses_db_simpan(string $namaKth, int $tahun, string $namaKph, string $
                 ->execute([$namaKth, $nomorSk ?: null, $namaKph ?: null, $luasVal, $tglVal, $tahun ?: null]);
             $kthId = (int)$pdo->lastInsertId();
         }
-        try {
-            $ex = parse_excel_usulan($dstExcel);
-        } catch (Throwable $e) {
-            throw new RuntimeException('Gagal parsing Excel usulan pupuk: ' . $e->getMessage());
-        }
-        if (!count($ex['rows'])) {
-            throw new RuntimeException('Excel usulan tidak menghasilkan baris data (pastikan terdapat baris header NIK + NAMA).');
-        }
         $insU = $pdo->prepare('INSERT INTO usulan_pupuk (kth_id, no_urut, nik, nama, jenis_kelamin, rt, rw, desa, kecamatan, pola_tanam, petak, luas_lahan, no_sk_ps, koordinat_x_raw, koordinat_y_raw, koordinat_x, koordinat_y) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
         foreach ($ex['rows'] as $r) {
             $insU->execute([
@@ -55,11 +72,6 @@ function proses_db_simpan(string $namaKth, int $tahun, string $namaKph, string $
                 $r['desa'] ?: null, $r['kecamatan'] ?: null, $r['pola'] ?: null, $r['petak'] ?: null,
                 $r['luas'], $r['no_sk'] ?: null, $r['x_raw'] ?: null, $r['y_raw'] ?: null, $r['x'], $r['y']
             ]);
-        }
-        try {
-            $skParsed = parse_excel_sk($dstSk, $sheetSk);
-        } catch (Throwable $e) {
-            throw new RuntimeException('Gagal membaca file Excel/CSV anggota SK' . ($sheetSk ? " (sheet '{$sheetSk}')" : '') . ': ' . $e->getMessage());
         }
         $_SESSION['sk_parse'][$kthId] = [
             'rows' => $skParsed['rows'],
@@ -70,14 +82,6 @@ function proses_db_simpan(string $namaKth, int $tahun, string $namaKph, string $
                 'sheet' => $sheetSk,
             ],
         ];
-        try {
-            $shp = parse_shapefile_zip($dstZip, $namaKth);
-        } catch (Throwable $e) {
-            throw new RuntimeException('Gagal parsing shapefile: ' . $e->getMessage());
-        }
-        if (!$shp['total_fitur']) {
-            throw new RuntimeException('Shapefile tidak berisi fitur poligon yang valid.');
-        }
         $namaLayer = $shp['features'][0]['lembaga'] ?? basename($dstZip);
         $noSkDbf = '';
         foreach ($shp['features'] as $f) {
