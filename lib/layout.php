@@ -237,8 +237,22 @@ tailwind.config = {
         $borderCls = $isErr ? 'border-audit-revisi bg-audit-revisiBg text-audit-revisi'
             : ($isWarn ? 'border-audit-warn bg-audit-warnBg text-audit-warn'
                        : 'border-audit-valid bg-audit-validBg text-audit-valid');
+        $pesan = $f['pesan'];
+        $hasTemplateBtn = strpos($pesan, '[UNDUH_TEMPLATE]') !== false;
+        $pesanClean = str_replace('[UNDUH_TEMPLATE]', '', $pesan);
+
+        $btnTemplate = '';
+        if ($hasTemplateBtn) {
+            $btnTemplate = '<div class="mt-2.5 pt-2 border-t border-red-200">'
+                . '<a href="unduh_template.php" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold bg-forest-900 text-white hover:bg-forest-800 transition-colors shadow-sm">'
+                . '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>'
+                . 'Unduh Template Excel Resmi (.xlsx)'
+                . '</a>'
+                . '</div>';
+        }
+
         echo '<div class="flash-alert border-l-4 border px-4 py-3 mb-4 text-xs font-medium flex items-start justify-between gap-3 ' . $borderCls . '">'
-            . '<div class="flex items-center gap-2"><span>' . ($isErr ? '❌' : ($isWarn ? '⚠️' : '✅')) . '</span><div>' . nl2br(e($f['pesan'])) . '</div></div>'
+            . '<div class="flex items-start gap-2.5"><span>' . ($isErr ? '❌' : ($isWarn ? '⚠️' : '✅')) . '</span><div><div class="leading-relaxed">' . nl2br(e(trim($pesanClean))) . '</div>' . $btnTemplate . '</div></div>'
             . '<button type="button" onclick="this.closest(\'.flash-alert\').remove()" class="text-current/60 hover:text-current font-bold text-sm leading-none">&times;</button>'
             . '</div>';
     }

@@ -153,6 +153,12 @@ wizard(1);
             </div>
             <p class="text-xs text-ink-muted mt-1 leading-normal"><?= $f['desc'] ?></p>
           </div>
+          <?php if ($f['name'] === 'f_excel'): ?>
+          <a href="unduh_template.php" target="_blank" class="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold text-forest-800 bg-forest-50 hover:bg-forest-100 border border-forest-200 rounded transition-colors flex-shrink-0" title="Unduh format tabel Excel resmi">
+            <svg class="w-3.5 h-3.5 text-forest-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            Unduh Template
+          </a>
+          <?php endif; ?>
         </div>
 
         <div class="relative mt-2">
@@ -230,8 +236,9 @@ wizard(1);
     <div>
       <div class="font-bold text-ink mb-1 uppercase text-[11px] tracking-wider">Petunjuk Teknis Dokumen Masukan</div>
       <div class="text-[11.5px] text-ink-muted leading-relaxed space-y-1">
-        <p>• <b>Konversi SK PDF:</b> Bila daftar anggota masih dalam bentuk PDF SK scan resmi, gunakan konverter offline (<span class="font-mono text-ink">Jalankan_Konverter.bat</span>) untuk menghasilkan file Excel anggota sebelum diunggah.</p>
+        <p>• <b>Standar Format Excel Usulan Pupuk:</b> Tabel usulan wajib memuat kolom baku sesuai format resmi: <span class="font-mono text-ink">NO, NIK, NAMA, JENIS KELAMIN (L/P), RT, RW, DESA, KECAMATAN, POLA TANAM, PETAK, LUAS LAHAN (Ha), NO. PKS AGROFORESTRY / NO.SK PS</span>, dan <span class="font-mono text-ink">TITIK KOORDINAT LAHAN</span>. Berkas yang tidak memuat kolom wajib akan ditolak dengan peringatan. <a href="unduh_template.php" class="text-forest-700 hover:text-forest-900 font-bold underline inline-flex items-center gap-1">📥 Unduh Template Excel Resmi (.xlsx)</a>.</p>
         <p>• <b>Dukungan Format Koordinat (Geografis &amp; UTM):</b> Sistem mendukung koordinat format <b>Geografis WGS84</b> (derajat desimal, contoh: <span class="font-mono text-ink">X: 111.7017, Y: -7.2923</span>) maupun proyeksi metrik <b>UTM Zona 49S</b> (meter, contoh: <span class="font-mono text-ink">X: 570790, Y: 9182577</span>). Sistem otomatis mendeteksi dan mengonversi format UTM ke derajat desimal untuk analisis spasial.</p>
+        <p>• <b>Konversi SK PDF:</b> Bila daftar anggota masih dalam bentuk PDF SK scan resmi, gunakan konverter offline (<span class="font-mono text-ink">Jalankan_Konverter.bat</span>) untuk menghasilkan file Excel anggota sebelum diunggah.</p>
       </div>
     </div>
   </div>

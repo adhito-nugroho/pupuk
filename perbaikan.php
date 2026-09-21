@@ -66,9 +66,15 @@ layout_kth_subnav($kth, 'perbaikan', $versiAktif, $daftarVersi);
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-ink mb-1">
-            File Excel Usulan Perbaikan <span class="text-audit-revisi">*</span>
-          </label>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-xs font-semibold text-ink">
+              File Excel Usulan Perbaikan <span class="text-audit-revisi">*</span>
+            </label>
+            <a href="unduh_template.php" target="_blank" class="inline-flex items-center gap-1 text-[11px] font-semibold text-forest-700 hover:text-forest-900 bg-forest-50 hover:bg-forest-100 border border-forest-200 px-2 py-0.5 rounded transition-colors" title="Unduh format tabel Excel resmi">
+              <svg class="w-3 h-3 text-forest-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              Unduh Template
+            </a>
+          </div>
           <div class="relative">
             <input type="file" id="input_f_perbaikan" name="f_usulan_perbaikan" accept=".xlsx,.xls" required
                    class="w-full border border-kadaster-border rounded px-3 py-2 text-xs bg-white text-ink focus:border-forest-900 outline-none
@@ -80,7 +86,7 @@ layout_kth_subnav($kth, 'perbaikan', $versiAktif, $daftarVersi);
             <span id="feedback_name_perbaikan" class="truncate font-mono"></span>
             <span id="feedback_size_perbaikan" class="text-emerald-600 font-normal"></span>
           </div>
-          <p class="text-[10.5px] text-ink-muted mt-1">Format: Excel (<code>.xlsx</code> / <code>.xls</code>) · Maks 50 MB.</p>
+          <p class="text-[10.5px] text-ink-muted mt-1">Format: Excel (<code>.xlsx</code> / <code>.xls</code>) sesuai template baku · Maks 50 MB.</p>
         </div>
 
         <div>

@@ -33,23 +33,41 @@ function parse_excel_usulan(string $path): array {
         if (strpos($joined, 'NIK') !== false && strpos($joined, 'NAMA') !== false) {
             $headerRow = $r;
             foreach ($cells as $c => $v) {
-                if ($v === '' ) continue;
+                if ($v === '') continue;
                 if (strpos($v, 'NIK') !== false && !isset($colMap['nik'])) $colMap['nik'] = $c;
                 elseif (strpos($v, 'NAMA') !== false && !isset($colMap['nama'])) $colMap['nama'] = $c;
                 elseif (strpos($v, 'KELAMIN') !== false || $v === 'L/P' || $v === 'JENIS KELAMIN') $colMap['jk'] = $c;
                 elseif ($v === 'RT') $colMap['rt'] = $c;
                 elseif ($v === 'RW') $colMap['rw'] = $c;
                 elseif (strpos($v, 'DESA') !== false) $colMap['desa'] = $c;
-                elseif (strpos($v, 'KECAMATAN') !== false) $colMap['kecamatan'] = $c;
+                elseif (strpos($v, 'KECAMATAN') !== false || strpos($v, 'KEC') !== false) $colMap['kecamatan'] = $c;
                 elseif (strpos($v, 'POLA') !== false) $colMap['pola'] = $c;
                 elseif (strpos($v, 'PETAK') !== false) $colMap['petak'] = $c;
                 elseif (strpos($v, 'LUAS') !== false) $colMap['luas'] = $c;
                 elseif (strpos($v, 'SK') !== false || strpos($v, 'PKS') !== false) $colMap['no_sk'] = $c;
-                elseif (strpos($v, 'KOORDINAT') !== false || $v === 'X' || strpos($v, 'TITIK') !== false) {
-                    // Bisa 1 kolom gabungan atau 2 kolom X | Y (merge header).
-                    if (!isset($colMap['x'])) $colMap['x'] = $c;
-                    elseif (!isset($colMap['y'])) $colMap['y'] = $c;
-                } elseif ($v === 'Y') {
+                elseif (strpos($v, 'KOORDINAT') !== false || strpos($v, 'TITIK') !== false || strpos($v, 'EASTING') !== false || strpos($v, 'LONG') !== false || $v === 'X') {
+                    if (!isset($colMap['x'])) {
+                        $colMap['x'] = $c;
+                        // Cek apakah cell ini di-merge dengan kolom berikutnya (misal M4:N4 "TITIK KOORDINAT LAHAN")
+                        $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c);
+                        $cellCoord = $colLetter . $r;
+                        foreach ($ws->getMergeCells() as $mRange) {
+                            if (strpos($mRange, $cellCoord . ':') === 0) {
+                                $mParts = explode(':', $mRange);
+                                if (isset($mParts[1])) {
+                                    $endCol = preg_replace('/\d+/', '', $mParts[1]);
+                                    $endIdx = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($endCol);
+                                    if ($endIdx > $c && !isset($colMap['y'])) {
+                                        $colMap['y'] = $endIdx;
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    } elseif (!isset($colMap['y'])) {
+                        $colMap['y'] = $c;
+                    }
+                } elseif (strpos($v, 'NORTHING') !== false || strpos($v, 'LAT') !== false || $v === 'Y') {
                     $colMap['y'] = $c;
                 }
             }
@@ -60,11 +78,49 @@ function parse_excel_usulan(string $path): array {
             break;
         }
     }
+
     if ($headerRow === null) {
-        throw new RuntimeException('Baris header (NIK + NAMA) tidak ditemukan di 15 baris pertama sheet.');
+        throw new RuntimeException(
+            "Format berkas Excel tidak sesuai standar usulan pupuk.\n" .
+            "Baris judul/header kolom (NIK, NAMA, LUAS LAHAN, TITIK KOORDINAT) tidak ditemukan pada 15 baris pertama sheet.\n" .
+            "Pastikan Anda mengunggah file Excel dengan format tabel yang benar. [UNDUH_TEMPLATE]"
+        );
     }
-    // Fallback posisi default sesuai format contoh (header baris ke-4):
-    // A=No B=NIK C=Nama D=JK E=RT F=RW G=Desa H=Kec I=Pola J=Petak K=Luas L=NoSK M=X N=Y
+
+    // Jika kolom X ada tapi Y belum terpetakan, cek kolom berikutnya
+    if (isset($colMap['x']) && !isset($colMap['y'])) {
+        $nextC = $colMap['x'] + 1;
+        if ($nextC <= $maxCol && !in_array($nextC, $colMap, true)) {
+            $colMap['y'] = $nextC;
+        }
+    }
+
+    // Cek apakah baris tepat setelah header merupakan sub-header (misal X dan Y, atau Longitude dan Latitude)
+    $startRow = $headerRow + 1;
+    if ($startRow <= $maxRow) {
+        $subXVal = mb_strtoupper(trim((string)$ws->getCell([$colMap['x'] ?? 13, $startRow])->getCalculatedValue()), 'UTF-8');
+        $subYVal = mb_strtoupper(trim((string)$ws->getCell([$colMap['y'] ?? 14, $startRow])->getCalculatedValue()), 'UTF-8');
+        if (in_array($subXVal, ['X', 'LONGITUDE', 'EASTING', 'LONG', 'BUJUR']) || in_array($subYVal, ['Y', 'LATITUDE', 'NORTHING', 'LAT', 'LINTANG'])) {
+            $startRow = $headerRow + 2;
+        }
+    }
+
+    // Validasi kelengkapan kolom wajib
+    $missing = [];
+    if (!isset($colMap['nik'])) $missing[] = 'NIK';
+    if (!isset($colMap['nama'])) $missing[] = 'NAMA';
+    if (!isset($colMap['luas'])) $missing[] = 'LUAS LAHAN (Ha)';
+    if (!isset($colMap['x']) && !isset($colMap['y'])) $missing[] = 'TITIK KOORDINAT LAHAN (X & Y)';
+
+    if (!empty($missing)) {
+        throw new RuntimeException(
+            "Format kolom Excel tidak sesuai standar usulan pupuk.\n" .
+            "Kolom wajib berikut tidak ditemukan pada baris header: " . implode(', ', $missing) . ".\n" .
+            "Pastikan format tabel Excel Anda mengikuti standar resmi (NO, NIK, NAMA, JENIS KELAMIN, RT, RW, DESA, KECAMATAN, POLA TANAM, PETAK, LUAS LAHAN, NO. PKS/SK, TITIK KOORDINAT LAHAN). [UNDUH_TEMPLATE]"
+        );
+    }
+
+    // Fallback posisi default untuk kolom pendukung
     $colMap += ['no'=>1,'nik'=>2,'nama'=>3,'jk'=>4,'rt'=>5,'rw'=>6,'desa'=>7,'kecamatan'=>8,
                 'pola'=>9,'petak'=>10,'luas'=>11,'no_sk'=>12,'x'=>13,'y'=>14];
 
@@ -75,7 +131,7 @@ function parse_excel_usulan(string $path): array {
 
     // Jika kolom Y tidak ketemu tapi X ketemu (single kolom), biarkan y = x (dipecah per baris).
     $rows = []; $errors = [];
-    for ($r = $headerRow + 1; $r <= $maxRow; $r++) {
+    for ($r = $startRow; $r <= $maxRow; $r++) {
         $get = function(int $c) use ($ws, $r) {
             $v = $ws->getCell([$c, $r])->getCalculatedValue();
             if ($v === null) return '';
@@ -144,6 +200,13 @@ function parse_excel_usulan(string $path): array {
         if (!empty($rw['is_utm'])) $utmCount++;
     }
     $formatKoordinat = ($utmCount > 0) ? 'UTM Zona 49S (Otomatis Dikonversi ke Geografis WGS84)' : 'Geografis (WGS84)';
+
+    if (empty($rows)) {
+        throw new RuntimeException(
+            "Berkas Excel tidak memuat data usulan petani (0 baris data ditemukan di bawah judul kolom).\n" .
+            "Pastikan Anda telah mengisi data pemohon pada baris tabel di bawah header. [UNDUH_TEMPLATE]"
+        );
+    }
 
     return [
         'header_row' => $headerRow,
