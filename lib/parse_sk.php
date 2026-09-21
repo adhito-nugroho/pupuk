@@ -112,7 +112,14 @@ function preview_sheets_sk(string $path): array {
 
 function parse_excel_sk(string $path, ?string $sheetName = null): array {
     $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-    $wb = IOFactory::load($path);
+    // Gunakan ReadDataOnly agar file dengan style hingga 1M baris tidak makan memori
+    try {
+        $reader = IOFactory::createReaderForFile($path);
+        if (method_exists($reader, 'setReadDataOnly')) $reader->setReadDataOnly(true);
+        $wb = $reader->load($path);
+    } catch (Throwable $e) {
+        $wb = IOFactory::load($path);
+    }
     if ($sheetName !== null && $sheetName !== '' && $ext !== 'csv') {
         $ws = $wb->getSheetByName($sheetName);
         if (!$ws) {

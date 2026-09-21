@@ -10,7 +10,13 @@ require_once __DIR__ . '/helpers.php';
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 function parse_excel_usulan(string $path): array {
-    $wb = IOFactory::load($path);
+    try {
+        $reader = IOFactory::createReaderForFile($path);
+        if (method_exists($reader, 'setReadDataOnly')) $reader->setReadDataOnly(true);
+        $wb = $reader->load($path);
+    } catch (Throwable $e) {
+        $wb = IOFactory::load($path);
+    }
     $ws = $wb->getActiveSheet();
     $maxRow = $ws->getHighestDataRow();
     $maxCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($ws->getHighestDataColumn());
