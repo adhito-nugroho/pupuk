@@ -153,7 +153,7 @@ function proses_db_simpan(string $namaKth, int $tahun, string $namaKph, string $
             @unlink($dstSk ?? '');
             @unlink($dstZip ?? '');
         }
-        gagal($e->getMessage());
+        gagal($e->getMessage() . ' (pada ' . basename($e->getFile()) . ':' . $e->getLine() . ')');
     }
 }
 

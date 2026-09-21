@@ -242,6 +242,9 @@ tailwind.config = {
             . '<button type="button" onclick="this.closest(\'.flash-alert\').remove()" class="text-current/60 hover:text-current font-bold text-sm leading-none">&times;</button>'
             . '</div>';
     }
+    if (!empty($_GET['err']) || !empty($_GET['msg'])) {
+        echo '<script>if(window.history.replaceState){const u=window.location.protocol+"//"+window.location.host+window.location.pathname;window.history.replaceState({path:u},"",u);}</script>';
+    }
 }
 
 function layout_foot(): void {
