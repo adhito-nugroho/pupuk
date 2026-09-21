@@ -70,10 +70,15 @@ layout_kth_subnav($kth, 'perbaikan', $versiAktif, $daftarVersi);
             File Excel Usulan Perbaikan <span class="text-audit-revisi">*</span>
           </label>
           <div class="relative">
-            <input type="file" name="f_usulan_perbaikan" accept=".xlsx,.xls" required
+            <input type="file" id="input_f_perbaikan" name="f_usulan_perbaikan" accept=".xlsx,.xls" required
                    class="w-full border border-kadaster-border rounded px-3 py-2 text-xs bg-white text-ink focus:border-forest-900 outline-none
                           file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold
                           file:bg-forest-900 file:text-white hover:file:bg-forest-800 cursor-pointer">
+          </div>
+          <div id="feedback_f_perbaikan" class="hidden text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-300 p-2 rounded mt-1.5 flex items-center gap-2">
+            <span>✓</span>
+            <span id="feedback_name_perbaikan" class="truncate font-mono"></span>
+            <span id="feedback_size_perbaikan" class="text-emerald-600 font-normal"></span>
           </div>
           <p class="text-[10.5px] text-ink-muted mt-1">Format: Excel (<code>.xlsx</code> / <code>.xls</code>) · Maks 50 MB.</p>
         </div>
@@ -97,10 +102,21 @@ layout_kth_subnav($kth, 'perbaikan', $versiAktif, $daftarVersi);
           </p>
         </div>
 
-        <button type="submit"
+        <div id="perbaikan_loading" class="hidden p-3 bg-emerald-50 border border-emerald-400 rounded text-xs text-emerald-900 flex items-center gap-2.5">
+          <svg class="animate-spin h-4 w-4 text-emerald-700 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+          <div>
+            <div class="font-bold">Mengunggah &amp; Memverifikasi...</div>
+            <div class="text-[10.5px] text-emerald-700">Mohon tunggu, proses parsing dan matching sedang berjalan...</div>
+          </div>
+        </div>
+
+        <button type="submit" id="btn_submit_perbaikan"
                 class="w-full btn-forest py-2.5 px-4 text-xs font-semibold rounded flex items-center justify-center gap-2">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-          <span>Unggah & Verifikasi Versi Baru</span>
+          <svg id="btn_icon_perbaikan" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+          <span id="btn_text_perbaikan">Unggah &amp; Verifikasi Versi Baru</span>
         </button>
       </form>
     </div>
@@ -230,5 +246,45 @@ layout_kth_subnav($kth, 'perbaikan', $versiAktif, $daftarVersi);
     </div>
   </div>
 </div>
+
+<script>
+(function() {
+  const inp = document.getElementById('input_f_perbaikan');
+  const fb = document.getElementById('feedback_f_perbaikan');
+  const fbName = document.getElementById('feedback_name_perbaikan');
+  const fbSize = document.getElementById('feedback_size_perbaikan');
+  const form = document.querySelector('form[action="proses_upload_perbaikan.php"]');
+  const btn = document.getElementById('btn_submit_perbaikan');
+  const btnText = document.getElementById('btn_text_perbaikan');
+  const btnIcon = document.getElementById('btn_icon_perbaikan');
+  const loading = document.getElementById('perbaikan_loading');
+
+  if (inp && fb) {
+    inp.addEventListener('change', function() {
+      if (this.files && this.files.length > 0) {
+        const file = this.files[0];
+        let sz = file.size < 1048576 ? (file.size / 1024).toFixed(1) + ' KB' : (file.size / 1048576).toFixed(2) + ' MB';
+        fbName.textContent = file.name;
+        fbSize.textContent = '(' + sz + ')';
+        fb.classList.remove('hidden');
+      } else {
+        fb.classList.add('hidden');
+      }
+    });
+  }
+
+  if (form) {
+    form.addEventListener('submit', function() {
+      if (btn) {
+        btn.disabled = true;
+        btn.classList.add('opacity-75', 'cursor-wait');
+      }
+      if (btnText) btnText.textContent = '⏳ Mengunggah & Memverifikasi...';
+      if (btnIcon) btnIcon.classList.add('animate-spin');
+      if (loading) loading.classList.remove('hidden');
+    });
+  }
+})();
+</script>
 
 <?php layout_foot(); ?>

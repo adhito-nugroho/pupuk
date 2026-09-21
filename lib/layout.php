@@ -237,9 +237,9 @@ tailwind.config = {
         $borderCls = $isErr ? 'border-audit-revisi bg-audit-revisiBg text-audit-revisi'
             : ($isWarn ? 'border-audit-warn bg-audit-warnBg text-audit-warn'
                        : 'border-audit-valid bg-audit-validBg text-audit-valid');
-        echo '<div x-data="{show:true}" x-show="show" class="border-l-4 border px-4 py-3 mb-4 text-xs font-medium flex items-start justify-between gap-3 ' . $borderCls . '">'
-            . '<div>' . nl2br(e($f['pesan'])) . '</div>'
-            . '<button @click="show=false" class="text-current/60 hover:text-current font-bold text-sm">&times;</button>'
+        echo '<div class="flash-alert border-l-4 border px-4 py-3 mb-4 text-xs font-medium flex items-start justify-between gap-3 ' . $borderCls . '">'
+            . '<div class="flex items-center gap-2"><span>' . ($isErr ? '❌' : ($isWarn ? '⚠️' : '✅')) . '</span><div>' . nl2br(e($f['pesan'])) . '</div></div>'
+            . '<button type="button" onclick="this.closest(\'.flash-alert\').remove()" class="text-current/60 hover:text-current font-bold text-sm leading-none">&times;</button>'
             . '</div>';
     }
 }
