@@ -283,6 +283,32 @@ wizard(1);
       if (this.files && this.files.length > 0) {
         const file = this.files[0];
         
+        // Cek ekstensi file
+        const ext = file.name.split('.').pop().toLowerCase();
+        let allowed = [];
+        if (fn === 'f_excel') allowed = ['xlsx', 'xls'];
+        if (fn === 'f_sk') allowed = ['xlsx', 'xls', 'csv'];
+        if (fn === 'f_zip') allowed = ['zip'];
+
+        if (!allowed.includes(ext)) {
+          if (errEl) {
+            let msg = 'Format file tidak sesuai! Harus bertipe ' + allowed.map(e => '.' + e).join(', ') + '.';
+            if (fn === 'f_sk' && ext === 'pdf') {
+              msg = 'File SK tidak boleh langsung berupa PDF. Mohon konversikan tabel SK ke file Excel terlebih dahulu menggunakan Jalankan_Konverter.bat atau pilih file Excel hasil konversi (contoh: SK_KTH_SUMBER_JATI_anggota.xlsx).';
+            }
+            errEl.textContent = msg;
+            errEl.classList.remove('hidden');
+          }
+          this.value = '';
+          if (emptyView) emptyView.classList.remove('hidden');
+          if (chosenView) { chosenView.classList.add('hidden'); chosenView.classList.remove('flex'); }
+          if (btnPick) btnPick.classList.remove('hidden');
+          box.classList.add('border-dashed', 'border-kadaster-border', 'bg-[#FAF8F3]');
+          box.classList.remove('border-solid', 'border-emerald-600', 'bg-emerald-50/70', 'shadow-sm');
+          updateStatusCount();
+          return;
+        }
+
         // Cek ukuran
         if (file.size > maxBytes) {
           if (errEl) {
@@ -290,6 +316,12 @@ wizard(1);
             errEl.classList.remove('hidden');
           }
           this.value = '';
+          if (emptyView) emptyView.classList.remove('hidden');
+          if (chosenView) { chosenView.classList.add('hidden'); chosenView.classList.remove('flex'); }
+          if (btnPick) btnPick.classList.remove('hidden');
+          box.classList.add('border-dashed', 'border-kadaster-border', 'bg-[#FAF8F3]');
+          box.classList.remove('border-solid', 'border-emerald-600', 'bg-emerald-50/70', 'shadow-sm');
+          updateStatusCount();
           return;
         }
 
@@ -356,16 +388,31 @@ wizard(1);
         return false;
       }
 
+      // Cek apakah nama KTH sudah terdaftar tetapi belum centang timpa
+      const inputKth = document.getElementById('input_nama_kth_baru');
+      const checkTimpa = document.getElementById('check_timpa');
+      const labelTimpa = document.getElementById('label_timpa');
+      const valKth = (inputKth ? inputKth.value : '').trim().toLowerCase();
+      if (valKth && kthNames.includes(valKth)) {
+        if (checkTimpa && !checkTimpa.checked) {
+          e.preventDefault();
+          alert('Perhatian: Kelompok Tani "' + (inputKth ? inputKth.value : '') + '" sudah terdaftar di database!\n\nUntuk menimpa data lama dengan berkas baru ini, silakan centang kotak persetujuan:\n"Saya sadar: bila nama KTH ini sudah terdaftar..." di bawah kolom nama KTH.');
+          if (checkTimpa) checkTimpa.focus();
+          if (labelTimpa) {
+            labelTimpa.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            labelTimpa.classList.add('ring-4', 'ring-amber-500');
+            setTimeout(() => labelTimpa.classList.remove('ring-4', 'ring-amber-500'), 3000);
+          }
+          return false;
+        }
+      }
+
       // Valid: Tampilkan Indikator Loading Instan
       const submitBtn = document.getElementById('btn_submit_baru');
       const submitText = document.getElementById('btn_submit_text');
       const submitIcon = document.getElementById('btn_submit_icon');
       const banner = document.getElementById('upload_progress_banner');
 
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.classList.add('opacity-80', 'cursor-wait');
-      }
       if (submitText) {
         submitText.textContent = '⏳ Mengunggah 3 Berkas & Memproses... Mohon Tunggu...';
       }
@@ -376,6 +423,14 @@ wizard(1);
         banner.classList.remove('hidden');
         banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
+
+      // Beri sedikit jeda sebelum disable button agar event form submit tidak terganggu browser
+      setTimeout(() => {
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.classList.add('opacity-80', 'cursor-wait');
+        }
+      }, 50);
     });
   }
 

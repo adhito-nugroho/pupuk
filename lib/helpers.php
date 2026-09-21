@@ -105,15 +105,21 @@ function e(?string $s): string {
     return htmlspecialchars((string)($s ?? ''), ENT_QUOTES, 'UTF-8');
 }
 
-/** Flash message sederhana via session. */
+/** Flash message sederhana via session + fallback query parameter. */
 function flash_set(string $tipe, string $pesan): void {
-    if (session_status() !== PHP_SESSION_ACTIVE) @session_start();
+    if (session_status() !== PHP_SESSION_ACTIVE && !headers_sent()) @session_start();
     $_SESSION['flash'][] = ['tipe' => $tipe, 'pesan' => $pesan];
 }
 function flash_take(): array {
-    if (session_status() !== PHP_SESSION_ACTIVE) @session_start();
+    if (session_status() !== PHP_SESSION_ACTIVE && !headers_sent()) @session_start();
     $f = $_SESSION['flash'] ?? [];
     $_SESSION['flash'] = [];
+    if (!empty($_GET['err'])) {
+        $f[] = ['tipe' => 'error', 'pesan' => trim((string)$_GET['err'])];
+    }
+    if (!empty($_GET['msg'])) {
+        $f[] = ['tipe' => 'ok', 'pesan' => trim((string)$_GET['msg'])];
+    }
     return $f;
 }
 

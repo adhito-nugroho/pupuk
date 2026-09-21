@@ -13,7 +13,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') { header('Location: baru.php'); exit;
 
 function gagal(string $msg): void {
     flash_set('error', $msg);
-    header('Location: baru.php');
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        @session_write_close();
+    }
+    header('Location: baru.php?err=' . urlencode($msg));
     exit;
 }
 
@@ -133,12 +136,14 @@ function proses_db_simpan(string $namaKth, int $tahun, string $namaKph, string $
             $pesan .= " (Perhatian: ada {$skParsed['perlu_dicek_count']} baris yang ditandai kuning dan perlu dicek manual).";
         }
         flash_set('ok', $pesan);
+        if (session_status() === PHP_SESSION_ACTIVE) @session_write_close();
         header('Location: konfirmasi_sk.php?kth_id=' . $kthId);
         exit;
     } catch (Throwable $e) {
         if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
         if ($isConfirmSheet) {
             flash_set('error', $e->getMessage());
+            if (session_status() === PHP_SESSION_ACTIVE) @session_write_close();
             header('Location: pilih_sheet_sk.php');
             exit;
         }
@@ -161,6 +166,7 @@ if ($isConfirmSheet) {
     $sheetSk = trim((string)($_POST['sheet_sk'] ?? ''));
     if ($sheetSk === '') {
         flash_set('error', 'Silakan pilih salah satu sheet terlebih dahulu.');
+        if (session_status() === PHP_SESSION_ACTIVE) @session_write_close();
         header('Location: pilih_sheet_sk.php');
         exit;
     }
@@ -176,6 +182,7 @@ if ($isConfirmSheet) {
     }
     if (!$found) {
         flash_set('error', "Sheet '{$sheetSk}' tidak ditemukan di file.");
+        if (session_status() === PHP_SESSION_ACTIVE) @session_write_close();
         header('Location: pilih_sheet_sk.php');
         exit;
     }
@@ -199,6 +206,12 @@ if ($isConfirmSheet) {
 // ============================================================
 // MODE 1: Upload awal 3 file dari baru.php
 // ============================================================
+// Cek jika ukuran total melebihi post_max_size (PHP otomatis mengosongkan $_POST dan $_FILES)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($_POST) && empty($_FILES) && !empty($_SERVER['CONTENT_LENGTH'])) {
+    $maxPost = ini_get('post_max_size');
+    $sizeMb = round(((int)$_SERVER['CONTENT_LENGTH']) / 1048576, 1);
+    gagal("Ukuran total berkas yang diunggah ({$sizeMb} MB) melebihi batas maksimal upload server (post_max_size = {$maxPost}). Silakan perkecil berkas atau naikkan limit di php.ini.");
+}
 $namaKth = trim((string)($_POST['nama_kth_baru'] ?? ''));
 $tahun = (int)($_POST['tahun'] ?? date('Y'));
 $namaKph = trim((string)($_POST['nama_kph'] ?? ''));

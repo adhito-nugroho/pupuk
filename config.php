@@ -11,3 +11,7 @@ define('UPLOAD_DIR', __DIR__ . '/uploads');
 define('MAX_UPLOAD_BYTES', 50 * 1024 * 1024); // 50 MB per file
 
 if (!is_dir(UPLOAD_DIR)) { @mkdir(UPLOAD_DIR, 0775, true); }
+
+if (session_status() !== PHP_SESSION_ACTIVE && !headers_sent()) {
+    @session_start();
+}
