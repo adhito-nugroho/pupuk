@@ -114,7 +114,7 @@ wizard(1);
           'code' => 'DOK-02',
           'label' => 'Daftar Anggota Resmi SK Kemitraan',
           'ext' => '.xlsx / .xls / .csv',
-          'desc' => 'File hasil konversi/ekstraksi tabel lampiran SK Menteri LHK (Nomor, Nama, NIK, L/P, Desa, Kecamatan).',
+          'desc' => 'File hasil konversi/ekstraksi tabel lampiran SK Menteri LHK (Nomor, Nama, NIK, L/P, Desa, Kecamatan). Jika file memiliki lebih dari 1 sheet, sistem akan meminta Anda memilih sheet yang benar setelah upload.',
         ],
         [
           'name' => 'f_zip',

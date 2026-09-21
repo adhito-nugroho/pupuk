@@ -17,6 +17,61 @@ function gagal(string $msg): void {
     exit;
 }
 
+// ============================================================
+// MODE 2: Lanjutan dari halaman pilih_sheet_sk.php
+// POST hanya berisi sheet_sk + flag confirm_sheet, file sudah tersimpan di pending
+// ============================================================
+$isConfirmSheet = isset($_POST['confirm_sheet']) && isset($_SESSION['pending_baru']);
+if ($isConfirmSheet) {
+    $pending = $_SESSION['pending_baru'];
+    $sheetSk = trim((string)($_POST['sheet_sk'] ?? ''));
+    if ($sheetSk === '') {
+        flash_set('error', 'Silakan pilih salah satu sheet terlebih dahulu.');
+        header('Location: pilih_sheet_sk.php');
+        exit;
+    }
+
+    // Validasi sheet memang ada di file
+    $dstSkPending = $pending['dstSk'] ?? '';
+    if (!is_file($dstSkPending)) {
+        unset($_SESSION['pending_baru']);
+        gagal('File SK pending tidak ditemukan, silakan upload ulang dari awal.');
+    }
+    $sheetNamesCheck = get_sheet_names_sk($dstSkPending);
+    $found = false;
+    foreach ($sheetNamesCheck as $nm) {
+        if (strcasecmp($nm, $sheetSk) === 0) { $found = true; $sheetSk = $nm; break; }
+    }
+    if (!$found) {
+        flash_set('error', "Sheet '{$sheetSk}' tidak ditemukan di file.");
+        header('Location: pilih_sheet_sk.php');
+        exit;
+    }
+
+    // Restore data form dari pending
+    $namaKth = trim((string)($pending['post']['nama_kth_baru'] ?? ''));
+    $tahun = (int)($pending['post']['tahun'] ?? date('Y'));
+    $namaKph = trim((string)($pending['post']['nama_kph'] ?? ''));
+    $nomorSk = trim((string)($pending['post']['nomor_sk'] ?? ''));
+    $luasAreal = trim((string)($pending['post']['luas_areal'] ?? ''));
+    $tanggalSk = trim((string)($pending['post']['tanggal_sk'] ?? ''));
+
+    $dstExcel = $pending['dstExcel'];
+    $dstSk = $pending['dstSk'];
+    $dstZip = $pending['dstZip'];
+
+    if (!is_file($dstExcel) || !is_file($dstZip)) {
+        unset($_SESSION['pending_baru']);
+        gagal('File upload pending tidak lengkap, silakan upload ulang.');
+    }
+
+    // Lanjut ke proses DB dengan $sheetSk yang sudah dipilih
+    goto proses_db;
+}
+
+// ============================================================
+// MODE 1: Upload awal 3 file dari baru.php
+// ============================================================
 $namaKth = trim((string)($_POST['nama_kth_baru'] ?? ''));
 $tahun = (int)($_POST['tahun'] ?? date('Y'));
 $namaKph = trim((string)($_POST['nama_kph'] ?? ''));
@@ -99,6 +154,48 @@ foreach ([['f_excel', $dstExcel], ['f_sk', $dstSk], ['f_zip', $dstZip]] as [$k, 
     }
 }
 
+// ============================================================
+// Deteksi multi-sheet pada file SK anggota (xlsx/xls)
+// Jika >1 sheet dan belum memilih sheet → simpan pending & redirect ke picker
+// ============================================================
+$extSk = strtolower(pathinfo($dstSk, PATHINFO_EXTENSION));
+$sheetSk = null;
+if ($extSk !== 'csv') {
+    // cek apakah user sudah mengirim sheet_sk bersama upload (misal via JS picker)
+    $requestedSheet = trim((string)($_POST['sheet_sk'] ?? ''));
+    if ($requestedSheet !== '') {
+        $sheetSk = $requestedSheet;
+    } else {
+        try {
+            $sheetNames = get_sheet_names_sk($dstSk);
+        } catch (Throwable $e) {
+            $sheetNames = [];
+        }
+        if (count($sheetNames) > 1) {
+            // Simpan state pending untuk halaman konfirmasi
+            $_SESSION['pending_baru'] = [
+                'post' => $_POST,
+                'dstExcel' => $dstExcel,
+                'dstSk' => $dstSk,
+                'dstZip' => $dstZip,
+                'stamp' => $stamp,
+                'sheetNames' => $sheetNames,
+                'origSkName' => $_FILES['f_sk']['name'],
+                'origExcelName' => $_FILES['f_excel']['name'],
+                'origZipName' => $_FILES['f_zip']['name'],
+            ];
+            header('Location: pilih_sheet_sk.php');
+            exit;
+        }
+        $sheetSk = null; // 1 sheet saja → pakai active sheet
+    }
+}
+
+proses_db:
+
+// ============================================================
+// PROSES DB: parsing & simpan (dipakai kedua mode)
+// ============================================================
 $pdo = db();
 try {
     $pdo->beginTransaction();
@@ -146,9 +243,9 @@ try {
 
     // --- 2) Excel/CSV Daftar Anggota SK (staging ke session untuk konfirmasi manual) ---
     try {
-        $skParsed = parse_excel_sk($dstSk);
+        $skParsed = parse_excel_sk($dstSk, $sheetSk ?? null);
     } catch (Throwable $e) {
-        throw new RuntimeException('Gagal membaca file Excel/CSV anggota SK: ' . $e->getMessage());
+        throw new RuntimeException('Gagal membaca file Excel/CSV anggota SK' . ($sheetSk ? " (sheet '{$sheetSk}')" : '') . ': ' . $e->getMessage());
     }
 
     $_SESSION['sk_parse'][$kthId] = [
@@ -156,7 +253,8 @@ try {
         'info' => [
             'total' => $skParsed['total'],
             'perlu_dicek' => $skParsed['perlu_dicek_count'],
-            'file' => basename($dstSk)
+            'file' => basename($dstSk) . ($sheetSk ? " — Sheet: {$sheetSk}" : ''),
+            'sheet' => $sheetSk,
         ],
     ];
 
@@ -192,13 +290,27 @@ try {
         ]);
 
     $pdo->commit();
+    // pending selesai → hapus
+    unset($_SESSION['pending_baru']);
 } catch (Throwable $e) {
-    if ($pdo->inTransaction()) $pdo->rollBack();
+    if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
+    // jika dari mode confirm_sheet, redirect ke picker agar bisa pilih ulang
+    if ($isConfirmSheet) {
+        flash_set('error', $e->getMessage());
+        header('Location: pilih_sheet_sk.php');
+        exit;
+    }
+    // cleanup file upload jika gagal (jika tidak pending)
+    if (!isset($pending)) {
+        @unlink($dstExcel ?? '');
+        @unlink($dstSk ?? '');
+        @unlink($dstZip ?? '');
+    }
     gagal($e->getMessage());
 }
 
 $pesan = 'Upload berhasil: ' . count($ex['rows']) . ' baris usulan pupuk, '
-    . count($_SESSION['sk_parse'][$kthId]['rows']) . ' baris daftar anggota SK, '
+    . count($_SESSION['sk_parse'][$kthId]['rows']) . ' baris daftar anggota SK' . ($sheetSk ? " (sheet: {$sheetSk})" : '') . ', '
     . $shp['total_fitur'] . ' fitur poligon (' . $shp['total_ring'] . ' ring). Silakan tinjau dan konfirmasi anggota SK.';
 
 if ($skParsed['perlu_dicek_count'] > 0) {
