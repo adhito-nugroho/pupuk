@@ -84,6 +84,7 @@ layout_kth_subnav($k, 'sk', $versiAktif, $daftarVersi);
 
 <form action="proses_konfirmasi.php" method="post" id="form-sk">
   <input type="hidden" name="kth_id" value="<?= $kthId ?>">
+  <input type="hidden" name="data_anggota_json" id="data_anggota_json">
 
   <!-- ═══ Metadata SK (Collapsible) ═══ -->
   <div class="doc-card p-4 mb-5" x-data="{ open: false }">
@@ -130,10 +131,18 @@ layout_kth_subnav($k, 'sk', $versiAktif, $daftarVersi);
           Tabel Data Anggota SK (Dapat Diedit Langsung)
         </span>
       </div>
-      <button type="button" id="btn-tambah" 
-        class="btn-kadaster px-3 py-1 text-xs inline-flex items-center gap-1.5">
-        + Tambah Baris Anggota
-      </button>
+      <div class="flex items-center gap-2">
+        <button type="button" onclick="document.getElementById('modal-upload-sk').classList.remove('hidden')" 
+          class="btn-kadaster px-3 py-1 text-xs inline-flex items-center gap-1.5 font-medium text-forest-800 hover:text-forest-900 bg-forest-50 hover:bg-forest-100 border border-forest-300 shadow-sm"
+          title="Unggah ulang berkas Excel SK untuk membaca kembali seluruh anggota jika data sebelumnya terpotong">
+          <svg class="w-3.5 h-3.5 text-forest-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+          Ganti / Unggah Ulang File SK
+        </button>
+        <button type="button" id="btn-tambah" 
+          class="btn-kadaster px-3 py-1 text-xs inline-flex items-center gap-1.5">
+          + Tambah Baris Manual
+        </button>
+      </div>
     </div>
 
     <div class="overflow-x-auto max-h-[580px] overflow-y-auto">
@@ -209,7 +218,7 @@ layout_kth_subnav($k, 'sk', $versiAktif, $daftarVersi);
     <a href="index.php" class="btn-kadaster px-4 py-2 text-xs inline-flex items-center gap-1.5">
       ← Kembali ke Buku Register
     </a>
-    <button type="submit" class="btn-forest px-5 py-2.5 text-xs inline-flex items-center gap-2">
+    <button type="submit" id="btn-submit-sk" class="btn-forest px-5 py-2.5 text-xs inline-flex items-center gap-2 font-semibold">
       <span>Simpan &amp; Lanjut ke Tahap 03 — Uji Spasial &amp; Titik</span>
       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
@@ -217,6 +226,35 @@ layout_kth_subnav($k, 'sk', $versiAktif, $daftarVersi);
     </button>
   </div>
 </form>
+
+<!-- Modal Upload Ulang Berkas SK -->
+<div id="modal-upload-sk" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded border border-kadaster-border max-w-md w-full p-5 shadow-xl animate-fadeIn">
+    <div class="flex items-center justify-between pb-3 border-b border-kadaster-border mb-4">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 bg-forest-900 inline-block"></span>
+        <h3 class="font-serif font-bold text-base text-ink">Unggah Ulang Berkas SK Anggota</h3>
+      </div>
+      <button type="button" onclick="document.getElementById('modal-upload-sk').classList.add('hidden')" class="text-ink-muted hover:text-ink text-lg leading-none">&times;</button>
+    </div>
+    <p class="text-xs text-ink-muted mb-4 leading-relaxed">
+      Gunakan fitur ini jika berkas SK Anda memiliki jumlah anggota yang banyak atau ingin mengganti daftar anggota SK tanpa harus mengulang input KTH dan SHP dari awal.
+    </p>
+    <form action="proses_upload_sk_ulang.php" method="post" enctype="multipart/form-data" class="space-y-4">
+      <input type="hidden" name="kth_id" value="<?= $kthId ?>">
+      <div>
+        <label class="block text-xs font-semibold text-ink mb-1">Pilih Berkas Excel / CSV SK:</label>
+        <input type="file" name="f_sk_ulang" accept=".xlsx,.xls,.csv" required
+          class="w-full border border-kadaster-border px-3 py-2 text-xs bg-white text-ink focus:border-forest-900 outline-none rounded file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-forest-900 file:text-white cursor-pointer">
+        <p class="text-[11px] text-ink-muted mt-1.5">Mendukung format <code>.xlsx</code>, <code>.xls</code>, atau <code>.csv</code> yang memuat kolom NIK dan Nama.</p>
+      </div>
+      <div class="flex items-center justify-end gap-2 pt-3 border-t border-kadaster-border">
+        <button type="button" onclick="document.getElementById('modal-upload-sk').classList.add('hidden')" class="btn-kadaster px-3 py-1.5 text-xs">Batal</button>
+        <button type="submit" class="btn-forest px-4 py-1.5 text-xs font-semibold">Proses &amp; Baca Ulang</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <script>
 function updateCounter() {
@@ -249,7 +287,7 @@ document.getElementById('btn-tambah').addEventListener('click', () => {
   tr.querySelector('input[name="nama[]"]').focus();
 });
 
-document.getElementById('form-sk').addEventListener('submit', (ev) => {
+document.getElementById('form-sk').addEventListener('submit', function(ev) {
   let invalid = 0;
   document.querySelectorAll('.nik-input').forEach(inp => {
     const v = inp.value.replace(/\D/g, '').trim();
@@ -264,7 +302,41 @@ document.getElementById('form-sk').addEventListener('submit', (ev) => {
   if (invalid > 0) {
     if (!confirm(`Terdapat ${invalid} baris dengan NIK yang bukan 16 digit. Tetap ingin menyimpan? (Baris NIK tidak valid akan ditolak server).`)) {
       ev.preventDefault();
+      return;
     }
+  }
+
+  // Serialisasi seluruh baris ke JSON agar aman dari limit max_input_vars server PHP (1000 vars)
+  const rows = [];
+  const trs = document.querySelectorAll('#tbl-sk tbody tr.sk-row');
+  trs.forEach(tr => {
+    const inpNama = tr.querySelector('input[name="nama[]"]') || tr.querySelector('.input-nama');
+    const inpNik  = tr.querySelector('input[name="nik[]"]') || tr.querySelector('.input-nik');
+    const selJk   = tr.querySelector('select[name="jk[]"]') || tr.querySelector('.select-jk');
+    const inpDesa = tr.querySelector('input[name="desa[]"]') || tr.querySelector('.input-desa');
+    const inpKec  = tr.querySelector('input[name="kecamatan[]"]') || tr.querySelector('.input-kec');
+
+    const nama = inpNama ? inpNama.value.trim() : '';
+    const nik  = inpNik ? inpNik.value.trim() : '';
+    const jk   = selJk ? selJk.value.trim() : '';
+    const desa = inpDesa ? inpDesa.value.trim() : '';
+    const kecamatan = inpKec ? inpKec.value.trim() : '';
+
+    if (nama !== '' || nik !== '') {
+      rows.push({ nama, nik, jk, desa, kecamatan });
+    }
+  });
+
+  if (rows.length > 0) {
+    document.getElementById('data_anggota_json').value = JSON.stringify(rows);
+    // Hapus atribut name pada input massal agar browser tidak mengirim ribuan variabel POST terpisah
+    trs.forEach(tr => {
+      tr.querySelectorAll('input, select').forEach(el => {
+        if (el.name && el.name.endsWith('[]')) {
+          el.removeAttribute('name');
+        }
+      });
+    });
   }
 });
 </script>

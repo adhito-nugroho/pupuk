@@ -194,7 +194,18 @@ function parse_excel_sk(string $path, ?string $sheetName = null): array {
         // Jika satu baris kosong total, lewati (dengan deteksi akhir data untuk file dengan 1M baris terformat)
         if ($nama === '' && $nik === '' && $desa === '' && $kecamatan === '') {
             $emptyStreak++;
-            if ($emptyStreak >= 30 && $r > $headerRow + 50) break;
+            if ($emptyStreak >= 100 && $r > $headerRow + 50) {
+                $adaLanjutan = false;
+                for ($k = 1; $k <= 50 && ($r + $k) <= $maxRow; $k++) {
+                    $peek = trim((string)$ws->getCell([$colMap['nik'] ?? 3, $r + $k])->getCalculatedValue())
+                         . trim((string)$ws->getCell([$colMap['nama'] ?? 2, $r + $k])->getCalculatedValue());
+                    if ($peek !== '') {
+                        $adaLanjutan = true;
+                        break;
+                    }
+                }
+                if (!$adaLanjutan) break;
+            }
             continue;
         }
         $emptyStreak = 0;

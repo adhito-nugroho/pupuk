@@ -18,30 +18,56 @@ $metaNamaKph = trim((string)($_POST['meta_nama_kph'] ?? ''));
 $metaLuasAreal = trim((string)($_POST['meta_luas_areal'] ?? ''));
 $metaTanggalSk = trim((string)($_POST['meta_tanggal_sk'] ?? ''));
 
-$nama = $_POST['nama'] ?? [];
-$nik = $_POST['nik'] ?? [];
-$jk = $_POST['jk'] ?? [];
-$desa = $_POST['desa'] ?? [];
-$kec = $_POST['kecamatan'] ?? [];
-
+$dataAnggotaJson = $_POST['data_anggota_json'] ?? '';
 $bersih = [];
 $tolak = 0;
 
-for ($i = 0; $i < count($nik); $i++) {
-    $nm = norm_nama((string)($nama[$i] ?? ''));
-    $nk = norm_nik((string)($nik[$i] ?? ''));
-    if ($nm === '' && $nk === '') continue; // baris kosong diabaikan
-    if ($nm === '' || strlen($nk) !== 16) {
-        $tolak++;
-        continue;
+if (!empty($dataAnggotaJson)) {
+    $rowsInput = json_decode($dataAnggotaJson, true);
+    if (is_array($rowsInput)) {
+        foreach ($rowsInput as $item) {
+            $nm = norm_nama((string)($item['nama'] ?? ''));
+            $nk = norm_nik((string)($item['nik'] ?? ''));
+            if ($nm === '' && $nk === '') continue; // baris kosong diabaikan
+            if ($nm === '' || strlen($nk) !== 16) {
+                $tolak++;
+                continue;
+            }
+            $bersih[] = [
+                'nama' => $nm,
+                'nik' => $nk,
+                'jk' => mb_strtoupper(trim((string)($item['jk'] ?? '')), 'UTF-8') ?: null,
+                'desa' => norm_nama((string)($item['desa'] ?? '')) ?: null,
+                'kecamatan' => norm_nama((string)($item['kecamatan'] ?? '')) ?: null
+            ];
+        }
     }
-    $bersih[] = [
-        'nama' => $nm,
-        'nik' => $nk,
-        'jk' => mb_strtoupper(trim((string)($jk[$i] ?? '')), 'UTF-8') ?: null,
-        'desa' => norm_nama((string)($desa[$i] ?? '')) ?: null,
-        'kecamatan' => norm_nama((string)($kec[$i] ?? '')) ?: null
-    ];
+}
+
+// Fallback jika tanpa JSON payload (membaca array $_POST tradisional)
+if (empty($bersih) && !empty($_POST['nik']) && is_array($_POST['nik'])) {
+    $nama = $_POST['nama'] ?? [];
+    $nik = $_POST['nik'] ?? [];
+    $jk = $_POST['jk'] ?? [];
+    $desa = $_POST['desa'] ?? [];
+    $kec = $_POST['kecamatan'] ?? [];
+
+    for ($i = 0; $i < count($nik); $i++) {
+        $nm = norm_nama((string)($nama[$i] ?? ''));
+        $nk = norm_nik((string)($nik[$i] ?? ''));
+        if ($nm === '' && $nk === '') continue; // baris kosong diabaikan
+        if ($nm === '' || strlen($nk) !== 16) {
+            $tolak++;
+            continue;
+        }
+        $bersih[] = [
+            'nama' => $nm,
+            'nik' => $nk,
+            'jk' => mb_strtoupper(trim((string)($jk[$i] ?? '')), 'UTF-8') ?: null,
+            'desa' => norm_nama((string)($desa[$i] ?? '')) ?: null,
+            'kecamatan' => norm_nama((string)($kec[$i] ?? '')) ?: null
+        ];
+    }
 }
 
 if (!$bersih) {
