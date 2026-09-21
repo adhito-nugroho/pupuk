@@ -7,7 +7,6 @@ $baseDir = dirname($vendorDir);
 
 return array(
     'ZipStream\\' => array($vendorDir . '/maennchen/zipstream-php/src'),
-    'Symfony\\Polyfill\\Mbstring\\' => array($vendorDir . '/symfony/polyfill-mbstring'),
     'Shapefile\\' => array($vendorDir . '/gasparesganga/php-shapefile/src/Shapefile'),
     'Psr\\SimpleCache\\' => array($vendorDir . '/psr/simple-cache/src'),
     'PhpOffice\\PhpSpreadsheet\\' => array($vendorDir . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet'),

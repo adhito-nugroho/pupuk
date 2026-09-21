@@ -6,10 +6,6 @@ namespace Composer\Autoload;
 
 class ComposerStaticInitef48c35900ab34e01e78ca0be8ccf115
 {
-    public static $files = array (
-        '0e6d7bf4a5811bfa5cf40c5ccd6fae6a' => __DIR__ . '/..' . '/symfony/polyfill-mbstring/bootstrap.php',
-    );
-
     public static $prefixLengthsPsr4 = array (
         'Z' => 
         array (
@@ -17,7 +13,6 @@ class ComposerStaticInitef48c35900ab34e01e78ca0be8ccf115
         ),
         'S' => 
         array (
-            'Symfony\\Polyfill\\Mbstring\\' => 26,
             'Shapefile\\' => 10,
         ),
         'P' => 
@@ -40,10 +35,6 @@ class ComposerStaticInitef48c35900ab34e01e78ca0be8ccf115
         'ZipStream\\' => 
         array (
             0 => __DIR__ . '/..' . '/maennchen/zipstream-php/src',
-        ),
-        'Symfony\\Polyfill\\Mbstring\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/symfony/polyfill-mbstring',
         ),
         'Shapefile\\' => 
         array (
@@ -71,16 +62,6 @@ class ComposerStaticInitef48c35900ab34e01e78ca0be8ccf115
         ),
     );
 
-    public static $prefixesPsr0 = array (
-        'S' => 
-        array (
-            'Smalot\\PdfParser\\' => 
-            array (
-                0 => __DIR__ . '/..' . '/smalot/pdfparser/src',
-            ),
-        ),
-    );
-
     public static $classMap = array (
         'Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
     );
@@ -90,7 +71,6 @@ class ComposerStaticInitef48c35900ab34e01e78ca0be8ccf115
         return \Closure::bind(function () use ($loader) {
             $loader->prefixLengthsPsr4 = ComposerStaticInitef48c35900ab34e01e78ca0be8ccf115::$prefixLengthsPsr4;
             $loader->prefixDirsPsr4 = ComposerStaticInitef48c35900ab34e01e78ca0be8ccf115::$prefixDirsPsr4;
-            $loader->prefixesPsr0 = ComposerStaticInitef48c35900ab34e01e78ca0be8ccf115::$prefixesPsr0;
             $loader->classMap = ComposerStaticInitef48c35900ab34e01e78ca0be8ccf115::$classMap;
 
         }, null, ClassLoader::class);

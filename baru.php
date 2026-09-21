@@ -238,7 +238,7 @@ wizard(1);
       <div class="text-[11.5px] text-ink-muted leading-relaxed space-y-1">
         <p>• <b>Standar Format Excel Usulan Pupuk:</b> Tabel usulan wajib memuat kolom baku sesuai format resmi: <span class="font-mono text-ink">NO, NIK, NAMA, JENIS KELAMIN (L/P), RT, RW, DESA, KECAMATAN, POLA TANAM, PETAK, LUAS LAHAN (Ha), NO. PKS AGROFORESTRY / NO.SK PS</span>, dan <span class="font-mono text-ink">TITIK KOORDINAT LAHAN</span>. Berkas yang tidak memuat kolom wajib akan ditolak dengan peringatan. <a href="unduh_template.php" class="text-forest-700 hover:text-forest-900 font-bold underline inline-flex items-center gap-1">📥 Unduh Template Excel Resmi (.xlsx)</a>.</p>
         <p>• <b>Dukungan Format Koordinat (Geografis &amp; UTM):</b> Sistem mendukung koordinat format <b>Geografis WGS84</b> (derajat desimal, contoh: <span class="font-mono text-ink">X: 111.7017, Y: -7.2923</span>) maupun proyeksi metrik <b>UTM Zona 49S</b> (meter, contoh: <span class="font-mono text-ink">X: 570790, Y: 9182577</span>). Sistem otomatis mendeteksi dan mengonversi format UTM ke derajat desimal untuk analisis spasial.</p>
-        <p>• <b>Konversi SK PDF:</b> Bila daftar anggota masih dalam bentuk PDF SK scan resmi, gunakan konverter offline (<span class="font-mono text-ink">Jalankan_Konverter.bat</span>) untuk menghasilkan file Excel anggota sebelum diunggah.</p>
+        <p>• <b>Format Berkas SK Anggota:</b> Daftar anggota pada SK diunggah dalam format tabel spreadsheet (<span class="font-mono text-ink">.xlsx / .xls</span>) atau <span class="font-mono text-ink">.csv</span>. Bila berkas SK berbentuk PDF, salin atau ekspor tabel lampiran anggota ke format Excel sebelum diunggah.</p>
       </div>
     </div>
   </div>
@@ -301,7 +301,7 @@ wizard(1);
           if (errEl) {
             let msg = 'Format file tidak sesuai! Harus bertipe ' + allowed.map(e => '.' + e).join(', ') + '.';
             if (fn === 'f_sk' && ext === 'pdf') {
-              msg = 'File SK tidak boleh langsung berupa PDF. Mohon konversikan tabel SK ke file Excel terlebih dahulu menggunakan Jalankan_Konverter.bat atau pilih file Excel hasil konversi (contoh: SK_KTH_SUMBER_JATI_anggota.xlsx).';
+              msg = 'File SK harus bertipe Excel (.xlsx, .xls) atau .csv. Mohon siapkan daftar anggota SK dalam format tabel spreadsheet.';
             }
             errEl.textContent = msg;
             errEl.classList.remove('hidden');
