@@ -101,7 +101,7 @@ function proses_db_simpan(string $namaKth, int $tahun, string $namaKph, string $
             ')->execute([$kthId, $origExcelName, $relPathExcel, count($ex['rows'])]);
         } catch (Throwable $eInsV) {}
 
-        $insU = $pdo->prepare('INSERT INTO usulan_pupuk (kth_id, versi_ke, no_urut, nik, nama, jenis_kelamin, rt, rw, desa, kecamatan, pola_tanam, petak, luas_lahan, no_sk_ps, koordinat_x_raw, koordinat_y_raw, koordinat_x, koordinat_y) VALUES (?,1,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+        $insU = $pdo->prepare('INSERT INTO usulan_pupuk (kth_id, versi_ke, no_urut, nik, nama, jenis_kelamin, rt, rw, desa, kecamatan, pola_tanam, petak, luas_lahan, no_sk_ps, koordinat_x_raw, koordinat_y_raw, koordinat_x, koordinat_y) VALUES (?,1,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
         foreach ($ex['rows'] as $r) {
             $insU->execute([
                 $kthId, $r['no'], $r['nik'], $r['nama'], $r['jk'] ?: null, $r['rt'] ?: null, $r['rw'] ?: null,
