@@ -109,11 +109,14 @@ try {
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ');
 
-    foreach ($ex['rows'] as $r) {
+    foreach ($ex['rows'] as $idx => $r) {
+        $noVal = (isset($r['no']) && is_numeric($r['no']) && (int)$r['no'] > 0 && (int)$r['no'] <= 2147483647)
+            ? (int)$r['no']
+            : ($idx + 1);
         $insU->execute([
             $kthId,
             $versiBaru,
-            $r['no'] ?? null,
+            $noVal,
             $r['nik'] ?? null,
             $r['nama'] ?? null,
             $r['jk'] ?? null,

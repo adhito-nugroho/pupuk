@@ -68,6 +68,11 @@ function parse_excel_usulan(string $path): array {
     $colMap += ['no'=>1,'nik'=>2,'nama'=>3,'jk'=>4,'rt'=>5,'rw'=>6,'desa'=>7,'kecamatan'=>8,
                 'pola'=>9,'petak'=>10,'luas'=>11,'no_sk'=>12,'x'=>13,'y'=>14];
 
+    // Jangan gunakan kolom no jika sama dengan kolom nik
+    if (isset($colMap['no'], $colMap['nik']) && $colMap['no'] === $colMap['nik']) {
+        unset($colMap['no']);
+    }
+
     // Jika kolom Y tidak ketemu tapi X ketemu (single kolom), biarkan y = x (dipecah per baris).
     $rows = []; $errors = [];
     for ($r = $headerRow + 1; $r <= $maxRow; $r++) {
@@ -108,8 +113,18 @@ function parse_excel_usulan(string $path): array {
         if ($xRaw !== '' && $x === null) $errors[] = "Baris $r: koordinat X tidak terbaca ('$xRaw').";
         if ($yRaw !== '' && $y === null) $errors[] = "Baris $r: koordinat Y tidak terbaca ('$yRaw').";
         $luas = str_replace(',', '.', (string)$get($colMap['luas']));
+        
+        $rawNo = isset($colMap['no']) ? $get($colMap['no']) : '';
+        $cleanNo = preg_replace('/\D/', '', (string)$rawNo);
+        $noVal = null;
+        if ($cleanNo !== '' && strlen($cleanNo) <= 7 && (int)$cleanNo > 0 && (int)$cleanNo <= 2000000) {
+            $noVal = (int)$cleanNo;
+        } else {
+            $noVal = count($rows) + 1;
+        }
+
         $rows[] = [
-            'no' => $get($colMap['no']) !== '' ? (int)preg_replace('/\D/', '', (string)$get($colMap['no'])) : null,
+            'no' => $noVal,
             'nik' => $nik, 'nama' => $nama,
             'jk' => mb_strtoupper((string)$get($colMap['jk']), 'UTF-8'),
             'rt' => (string)$get($colMap['rt']), 'rw' => (string)$get($colMap['rw']),

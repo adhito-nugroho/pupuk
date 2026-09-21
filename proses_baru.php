@@ -102,9 +102,12 @@ function proses_db_simpan(string $namaKth, int $tahun, string $namaKph, string $
         } catch (Throwable $eInsV) {}
 
         $insU = $pdo->prepare('INSERT INTO usulan_pupuk (kth_id, versi_ke, no_urut, nik, nama, jenis_kelamin, rt, rw, desa, kecamatan, pola_tanam, petak, luas_lahan, no_sk_ps, koordinat_x_raw, koordinat_y_raw, koordinat_x, koordinat_y) VALUES (?,1,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
-        foreach ($ex['rows'] as $r) {
+        foreach ($ex['rows'] as $idx => $r) {
+            $noVal = (isset($r['no']) && is_numeric($r['no']) && (int)$r['no'] > 0 && (int)$r['no'] <= 2147483647)
+                ? (int)$r['no']
+                : ($idx + 1);
             $insU->execute([
-                $kthId, $r['no'], $r['nik'], $r['nama'], $r['jk'] ?: null, $r['rt'] ?: null, $r['rw'] ?: null,
+                $kthId, $noVal, $r['nik'], $r['nama'], $r['jk'] ?: null, $r['rt'] ?: null, $r['rw'] ?: null,
                 $r['desa'] ?: null, $r['kecamatan'] ?: null, $r['pola'] ?: null, $r['petak'] ?: null,
                 $r['luas'], $r['no_sk'] ?: null, $r['x_raw'] ?: null, $r['y_raw'] ?: null, $r['x'], $r['y']
             ]);

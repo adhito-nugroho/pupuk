@@ -131,6 +131,14 @@ try {
     $hasil[] = ['status' => 'skip', 'msg' => 'Backfill versi laporan dilewati: ' . $eLap->getMessage()];
 }
 
+// Modifikasi kolom no_urut usulan_pupuk ke BIGINT agar aman dari angka besar
+try {
+    $pdo->exec('ALTER TABLE usulan_pupuk MODIFY COLUMN no_urut BIGINT DEFAULT NULL');
+    $hasil[] = ['status' => 'ok', 'msg' => 'Kolom `usulan_pupuk`.`no_urut` siap (tipe BIGINT).'];
+} catch (Throwable $eNu) {
+    $hasil[] = ['status' => 'skip', 'msg' => 'Update tipe `usulan_pupuk`.`no_urut` dilewati: ' . $eNu->getMessage()];
+}
+
 // Backfill data versi 1 untuk KTH yang sudah ada jika tabel kth_versi_usulan masih kosong
 try {
     $stKth = $pdo->query('SELECT id, nama_kth, dibuat_pada FROM kth');
