@@ -122,17 +122,19 @@ $live = $h->fetch() ?: ['total'=>0,'sesuai'=>0,'tidak'=>0];
   }
   .graticule-top { border-bottom: 1px solid var(--frame); }
   .graticule-bottom { border-top: 1px solid var(--frame); }
-  .graticule-middle { flex: 1; display: flex; position: relative; overflow: hidden; min-height: 0; }
+  .graticule-middle { flex: 1; display: flex; overflow: hidden; min-height: 0; }
   .graticule-left, .graticule-right {
-    width: 46px; display: flex; flex-direction: column; justify-content: space-between;
-    align-items: center; padding: 22px 0; font-size: 7px; font-weight: 600; color: #111;
+    width: 16px; display: flex; flex-direction: column; justify-content: space-between;
+    align-items: center; padding: 14px 0; font-size: 7.5px; font-weight: 600; color: #111;
     background: #fff; user-select: none; z-index: 500; flex-shrink: 0;
   }
   .graticule-left { border-right: 1px solid var(--frame); }
   .graticule-right { border-left: 1px solid var(--frame); }
   .coord-v { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; }
   .coord-h { white-space: nowrap; }
-  #map { flex: 1; height: 100%; width: 100%; background: #fff; z-index: 100; }
+  /* Pembungkus peta: legenda diposisikan relatif terhadap area peta (di dalam bingkai) */
+  .map-wrap { flex: 1; position: relative; min-width: 0; min-height: 0; }
+  #map { position: absolute; inset: 0; background: #fff; z-index: 100; }
 
   /* Label nama desa di atas peta */
   .village-label {
@@ -145,10 +147,9 @@ $live = $h->fetch() ?: ['total'=>0,'sesuai'=>0,'tidak'=>0];
 
   /* ═══ Kotak legenda melayang (di dalam peta, kanan atas) ═══ */
   .legend-float {
-    position: absolute; top: 12px; right: 12px; width: 228px; z-index: 800;
+    position: absolute; top: 14px; right: 16px; width: 228px; z-index: 800;
     background: #fdf6e0; border: 1.4px solid #4b5563;
     padding: 10px 14px 12px; text-align: center;
-    box-shadow: 2px 2px 0 rgba(0,0,0,0.15);
   }
   .legend-title { font-size: 11px; font-weight: 800; line-height: 1.3; letter-spacing: 0.01em; }
   .legend-sub { font-size: 11px; font-weight: 800; line-height: 1.3; }
@@ -229,22 +230,24 @@ $live = $h->fetch() ?: ['total'=>0,'sesuai'=>0,'tidak'=>0];
         <div class="graticule-left" id="coordLeft">
           <span class="coord-v">7°18'S</span><span class="coord-v">7°19'S</span><span class="coord-v">7°20'S</span><span class="coord-v">7°21'S</span><span class="coord-v">7°22'S</span><span class="coord-v">7°23'S</span>
         </div>
-        <div id="map"></div>
-        <div class="legend-float" id="legendFloat">
-          <div class="legend-title" id="dispTitle1">PETA TITIK ANDIL GARAPAN</div>
-          <div class="legend-sub" id="dispTitle2"><?= htmlspecialchars($namaKth) ?></div>
-          <svg class="legend-north" viewBox="0 0 30 40">
-            <text x="15" y="10" font-family="Inter,sans-serif" font-size="11" font-weight="800" text-anchor="middle" fill="#000">N</text>
-            <polygon points="15,13 7,37 15,31" fill="#000" stroke="#000" stroke-width="0.8"/>
-            <polygon points="15,13 23,37 15,31" fill="#fff" stroke="#000" stroke-width="0.8"/>
-          </svg>
-          <div class="legend-scale" id="dispScale">SKALA 1:32.000</div>
-          <div class="legend-ket">Keterangan</div>
-          <div class="legend-list">
-            <div class="legend-row" id="legRowDalam"><span class="dot dot-dalam"></span><span>Dalam SK</span></div>
-            <div class="legend-row" id="legRowLuar"><span class="dot dot-luar"></span><span>Luar SK</span></div>
-            <div class="legend-row" id="legRowBatas"><span class="box-sym"></span><span>Batas Desa</span></div>
-            <div class="legend-row"><span class="box-sym box-areal"></span><span id="dispAreal">Areal <?= htmlspecialchars($singkatan) ?></span></div>
+        <div class="map-wrap">
+          <div id="map"></div>
+          <div class="legend-float" id="legendFloat">
+            <div class="legend-title" id="dispTitle1">PETA TITIK ANDIL GARAPAN</div>
+            <div class="legend-sub" id="dispTitle2"><?= htmlspecialchars($namaKth) ?></div>
+            <svg class="legend-north" viewBox="0 0 30 40">
+              <text x="15" y="10" font-family="Inter,sans-serif" font-size="11" font-weight="800" text-anchor="middle" fill="#000">N</text>
+              <polygon points="15,13 7,37 15,31" fill="#000" stroke="#000" stroke-width="0.8"/>
+              <polygon points="15,13 23,37 15,31" fill="#fff" stroke="#000" stroke-width="0.8"/>
+            </svg>
+            <div class="legend-scale" id="dispScale">SKALA 1:32.000</div>
+            <div class="legend-ket">Keterangan</div>
+            <div class="legend-list">
+              <div class="legend-row" id="legRowDalam"><span class="dot dot-dalam"></span><span>Dalam SK</span></div>
+              <div class="legend-row" id="legRowLuar"><span class="dot dot-luar"></span><span>Luar SK</span></div>
+              <div class="legend-row" id="legRowBatas"><span class="box-sym"></span><span>Batas Desa</span></div>
+              <div class="legend-row"><span class="box-sym box-areal"></span><span id="dispAreal">Areal <?= htmlspecialchars($singkatan) ?></span></div>
+            </div>
           </div>
         </div>
         <div class="graticule-right" id="coordRight">
