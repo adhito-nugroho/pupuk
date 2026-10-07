@@ -45,7 +45,27 @@ foreach ($rows as $r) {
     if ((float)($r['luas_lahan'] ?? 0) > 2.0) $hitung['lebih']++;
 }
 
-$rekom = ($hitung['tidak'] === 0 && $hitung['luar'] === 0 && $hitung['lebih'] === 0 && $hitung['total'] > 0) ? 'DAPAT DITINDAKLANJUTI' : 'PERLU REVISI';
+$rekomAuto = ($hitung['tidak'] === 0 && $hitung['luar'] === 0 && $hitung['lebih'] === 0 && $hitung['total'] > 0) ? 'DAPAT DITINDAKLANJUTI' : 'PERLU REVISI';
+
+// Status Akhir mengikuti Kesimpulan Verifikasi (laporan.rekomendasi) bila sudah disimpan;
+// fallback ke hitung otomatis bila belum ada laporan untuk versi ini.
+$rekom = $rekomAuto;
+$rekomSumber = 'otomatis';
+try {
+    $cekLap = $pdo->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'laporan' AND COLUMN_NAME = 'versi_ke'");
+    $cekLap->execute();
+    if ((int)$cekLap->fetchColumn() > 0) {
+        $stLap = $pdo->prepare('SELECT rekomendasi FROM laporan WHERE kth_id = ? AND versi_ke = ? AND rekomendasi IS NOT NULL AND rekomendasi != "" ORDER BY id DESC LIMIT 1');
+        $stLap->execute([$kthId, $versiAktif]);
+    } else {
+        $stLap = $pdo->prepare('SELECT rekomendasi FROM laporan WHERE kth_id = ? AND rekomendasi IS NOT NULL AND rekomendasi != "" ORDER BY id DESC LIMIT 1');
+        $stLap->execute([$kthId]);
+    }
+    if (($rowLap = $stLap->fetch()) && !empty($rowLap['rekomendasi'])) {
+        $rekom = mb_strtoupper(trim((string)$rowLap['rekomendasi']), 'UTF-8');
+        $rekomSumber = 'kesimpulan';
+    }
+} catch (Throwable $eLap) { /* tetap pakai otomatis */ }
 
 $verifikator = pengaturan_verifikator($pdo);
 $tglUsulanIndo = tgl_indo($verInfo['dibuat_pada'] ?? 'now');
@@ -196,8 +216,13 @@ $tglCetakIndo = tgl_indo('now');
     <td>:</td>
     <td colspan="4">
       <b style="color: <?= $rekom === 'DAPAT DITINDAKLANJUTI' ? '#15803D' : '#B91C1C' ?>;">
-        <?= $rekom ?>
+        <?= e($rekom) ?>
       </b>
+      <?php if ($rekomSumber === 'kesimpulan'): ?>
+      <span style="font-size:9px;color:#6B7280;font-weight:400;">(mengikuti Kesimpulan Verifikasi Tahap 04)</span>
+      <?php else: ?>
+      <span style="font-size:9px;color:#6B7280;font-weight:400;">(otomatis — belum ada Kesimpulan tersimpan di Tahap 04)</span>
+      <?php endif; ?>
     </td>
   </tr>
 </table>

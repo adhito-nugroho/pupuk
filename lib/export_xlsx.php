@@ -211,7 +211,23 @@ function build_lembar_hasil_spreadsheet(PDO $pdo, int $kthId, int $versiKe = 0):
         $hitung['luas'] += (float)($r['luas_lahan'] ?? 0);
         if ((float)($r['luas_lahan'] ?? 0) > 2.0) $hitung['lebih']++;
     }
-    $rekom = ($hitung['tidak'] === 0 && $hitung['luar'] === 0 && $hitung['lebih'] === 0 && $hitung['total'] > 0) ? 'DAPAT DITINDAKLANJUTI' : 'PERLU REVISI';
+    $rekomAuto = ($hitung['tidak'] === 0 && $hitung['luar'] === 0 && $hitung['lebih'] === 0 && $hitung['total'] > 0) ? 'DAPAT DITINDAKLANJUTI' : 'PERLU REVISI';
+    // Status Akhir mengikuti Kesimpulan Verifikasi (laporan.rekomendasi) bila sudah disimpan.
+    $rekom = $rekomAuto;
+    try {
+        $cekLap = $pdo->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'laporan' AND COLUMN_NAME = 'versi_ke'");
+        $cekLap->execute();
+        if ((int)$cekLap->fetchColumn() > 0) {
+            $stLap = $pdo->prepare('SELECT rekomendasi FROM laporan WHERE kth_id = ? AND versi_ke = ? AND rekomendasi IS NOT NULL AND rekomendasi != "" ORDER BY id DESC LIMIT 1');
+            $stLap->execute([$kthId, $versiKe]);
+        } else {
+            $stLap = $pdo->prepare('SELECT rekomendasi FROM laporan WHERE kth_id = ? AND rekomendasi IS NOT NULL AND rekomendasi != "" ORDER BY id DESC LIMIT 1');
+            $stLap->execute([$kthId]);
+        }
+        if (($rowLap = $stLap->fetch()) && !empty($rowLap['rekomendasi'])) {
+            $rekom = mb_strtoupper(trim((string)$rowLap['rekomendasi']), 'UTF-8');
+        }
+    } catch (Throwable $eLap) { /* tetap pakai otomatis */ }
     $verifikator = pengaturan_verifikator($pdo);
     $luasSk = !empty($k['luas_areal']) ? (float)$k['luas_areal'] : 0.0;
 
