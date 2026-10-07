@@ -279,6 +279,10 @@ $live = $h->fetch() ?: ['total'=>0,'sesuai'=>0,'tidak'=>0];
     <div class="modal-field">
       <label>Teks Skala (cth. SKALA 1:32.000):</label>
       <input type="text" id="inpScale" value="SKALA 1:32.000">
+      <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:11px;font-weight:500;color:#334155;text-transform:none;">
+        <input type="checkbox" id="inpSkalaAuto" checked style="width:auto;">
+        Ikuti zoom peta otomatis (dihitung saat digeser/di-zoom)
+      </label>
     </div>
     <div class="modal-actions">
       <button style="background:#e2e8f0;color:#334155" onclick="tutupModalEdit()">Batal</button>
@@ -307,6 +311,7 @@ $live = $h->fetch() ?: ['total'=>0,'sesuai'=>0,'tidak'=>0];
 
   let showPoints = true;
   let showVillages = true;
+  let skalaOtomatis = true;
 
   const TILE_LAYERS = {
     osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, crossOrigin: true }),
@@ -348,8 +353,35 @@ $live = $h->fetch() ?: ['total'=>0,'sesuai'=>0,'tidak'=>0];
     const sideHtml = ticks5(minLat, maxLat, v => `<span class="coord-v">${formatDMS(v, false)}</span>`).reverse().join('');
     document.getElementById('coordLeft').innerHTML = sideHtml;
     document.getElementById('coordRight').innerHTML = sideHtml;
+    perbaruiSkalaOtomatis();
   }
   map.on('moveend', updateGraticuleCoords);
+
+  // Bulatkan penyebut skala ke 3 angka penting (cth. 31847 -> 31800)
+  function bulatkanSkala(d) {
+    if (!isFinite(d) || d <= 0) return 0;
+    const orde = Math.pow(10, Math.floor(Math.log10(d)) - 2);
+    return Math.round(d / orde) * orde;
+  }
+
+  // Hitung skala cetak dari bentang geografis vs lebar peta di kertas.
+  // Saat dicetak 96px CSS = 1 inci, jadi akurat mengikuti zoom/geser peta.
+  function perbaruiSkalaOtomatis() {
+    if (!skalaOtomatis) return;
+    try {
+      const b = map.getBounds();
+      const latTengah = (b.getNorth() + b.getSouth()) / 2;
+      const bentangGeoM = Math.abs(b.getEast() - b.getWest()) * 111319.9 * Math.cos(latTengah * Math.PI / 180);
+      const lebarPx = document.getElementById('map').clientWidth || 1;
+      const lebarKertasM = lebarPx * 0.0254 / 96;
+      const denom = bulatkanSkala(bentangGeoM / lebarKertasM);
+      if (!denom) return;
+      const teks = 'SKALA 1:' + denom.toLocaleString('id-ID');
+      document.getElementById('dispScale').textContent = teks;
+      const inp = document.getElementById('inpScale');
+      if (inp && document.activeElement !== inp) inp.value = teks;
+    } catch (e) { /* abaikan */ }
+  }
 
   // Garis batas desa tipis + label desa (tengah = desa aktual lokasi)
   function renderBatasDesaSekitar(centerLng, centerLat) {
@@ -464,7 +496,12 @@ $live = $h->fetch() ?: ['total'=>0,'sesuai'=>0,'tidak'=>0];
     document.getElementById('dispTitle1').textContent = document.getElementById('inpTitle1').value;
     document.getElementById('dispTitle2').textContent = document.getElementById('inpTitle2').value;
     document.getElementById('dispAreal').textContent = document.getElementById('inpAreal').value;
-    document.getElementById('dispScale').textContent = document.getElementById('inpScale').value;
+    skalaOtomatis = document.getElementById('inpSkalaAuto').checked;
+    if (skalaOtomatis) {
+      perbaruiSkalaOtomatis();
+    } else {
+      document.getElementById('dispScale').textContent = document.getElementById('inpScale').value;
+    }
     tutupModalEdit();
   };
 
@@ -474,6 +511,7 @@ $live = $h->fetch() ?: ['total'=>0,'sesuai'=>0,'tidak'=>0];
   window.cetakPetaLangsung = function() {
     map.invalidateSize();
     updateGraticuleCoords();
+    perbaruiSkalaOtomatis();
     setTimeout(() => { window.print(); }, 150);
   };
 })();
