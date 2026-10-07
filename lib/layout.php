@@ -215,6 +215,7 @@ tailwind.config = {
         $navItems = [
           'daftar' => ['index.php', 'Buku Register Kasus'],
           'baru'   => ['baru.php',  '+ Buka Kasus Baru'],
+          'pengaturan' => ['pengaturan.php', '⚙ Pengaturan'],
         ];
         foreach ($navItems as $key => [$href, $label]):
           $isActive = $aktif === $key;
@@ -435,6 +436,12 @@ function layout_kth_subnav(array $kth, string $aktif, int $versiAktif = 1, array
              class="btn-kadaster px-3 py-1.5 text-xs inline-flex items-center gap-1.5 font-medium text-forest-900 hover:bg-white">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
             <span>Cetak Lembar Hasil</span>
+          </a>
+          <a href="export.php?kth_id=<?= $kthId ?><?= $vParam ?>&mode=lembar"
+             class="btn-kadaster px-3 py-1.5 text-xs inline-flex items-center gap-1.5 font-medium text-forest-900 hover:bg-white"
+             title="Unduh Lembar Hasil Verifikasi sebagai file Excel (.xlsx)">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <span>Excel Lembar Hasil</span>
           </a>
         </div>
       </div>

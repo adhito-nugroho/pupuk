@@ -146,7 +146,7 @@ layout_kth_subnav($kth, 'perbaikan', $versiAktif, $daftarVersi);
             $vNum = (int)($v['versi_ke'] ?? 1);
             $isAktif = $vNum === $versiAktif;
             $isDapat = ($v['rekomendasi'] ?? '') === 'Dapat Ditindaklanjuti';
-            $tglStr = !empty($v['dibuat_pada']) ? date('d M Y · H:i', strtotime($v['dibuat_pada'])) : '-';
+            $tglStr = !empty($v['dibuat_pada']) ? tgl_indo($v['dibuat_pada'], 'sedang_waktu') : '-';
         ?>
         <div class="p-4 border rounded-md transition-all <?= $isAktif 
           ? 'bg-forest-50/70 border-forest-300 ring-1 ring-forest-900/10' 

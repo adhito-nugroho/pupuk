@@ -175,3 +175,202 @@ function export_laporan_excel(PDO $pdo, int $kthId, ?array $laporan = null, int 
     (new Xlsx($ss))->save('php://output');
     exit;
 }
+
+/**
+ * Lembar Hasil Verifikasi versi Excel — cerminan cetak.php
+ * (kop, identitas, rekap, tabel detail, status akhir, kolom TTD verifikator).
+ */
+function build_lembar_hasil_spreadsheet(PDO $pdo, int $kthId, int $versiKe = 0): array {
+    $kth = $pdo->prepare('SELECT * FROM kth WHERE id = ?');
+    $kth->execute([$kthId]);
+    $k = $kth->fetch();
+    if (!$k) throw new RuntimeException('Data KTH tidak ditemukan.');
+
+    if ($versiKe <= 0) {
+        $versiKe = (int)($k['versi_aktif'] ?? 1);
+        if ($versiKe <= 0) $versiKe = 1;
+    }
+
+    $stVer = $pdo->prepare('SELECT * FROM kth_versi_usulan WHERE kth_id = ? AND versi_ke = ?');
+    $stVer->execute([$kthId, $versiKe]);
+    $verInfo = $stVer->fetch() ?: ['label_versi' => 'Usulan (v' . $versiKe . ')', 'dibuat_pada' => ($k['dibuat_pada'] ?? 'now')];
+
+    $stRows = $pdo->prepare('
+        SELECT u.*, h.status_sk, h.status_koordinat, h.catatan
+        FROM usulan_pupuk u
+        LEFT JOIN hasil_verifikasi h ON (h.usulan_id = u.id AND h.versi_ke = u.versi_ke)
+        WHERE u.kth_id = ? AND u.versi_ke = ?
+        ORDER BY COALESCE(u.no_urut, u.id)');
+    $stRows->execute([$kthId, $versiKe]);
+    $rows = $stRows->fetchAll();
+
+    $hitung = ['total' => count($rows), 'sesuai' => 0, 'tidak' => 0, 'dalam' => 0, 'luar' => 0, 'luas' => 0.0, 'lebih' => 0];
+    foreach ($rows as $r) {
+        if (($r['status_sk'] ?? '') === 'Sesuai SK PS') $hitung['sesuai']++; else $hitung['tidak']++;
+        if (($r['status_koordinat'] ?? '') === 'Dalam Peta PS') $hitung['dalam']++; else $hitung['luar']++;
+        $hitung['luas'] += (float)($r['luas_lahan'] ?? 0);
+        if ((float)($r['luas_lahan'] ?? 0) > 2.0) $hitung['lebih']++;
+    }
+    $rekom = ($hitung['tidak'] === 0 && $hitung['luar'] === 0 && $hitung['lebih'] === 0 && $hitung['total'] > 0) ? 'DAPAT DITINDAKLANJUTI' : 'PERLU REVISI';
+    $verifikator = pengaturan_verifikator($pdo);
+    $luasSk = !empty($k['luas_areal']) ? (float)$k['luas_areal'] : 0.0;
+
+    $ss = new Spreadsheet();
+    $ws = $ss->getActiveSheet();
+    $ws->setTitle('Lembar Hasil');
+    $ws->getDefaultRowDimension()->setRowHeight(18);
+
+    $thin = ['borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]];
+    $center = ['alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true]];
+    $wrapLeft = ['alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true]];
+    $right = ['alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true]];
+
+    // Kop instansi
+    $ws->mergeCells('A1:G1');
+    $ws->setCellValue('A1', 'PEMERINTAH PROVINSI JAWA TIMUR · DINAS KEHUTANAN');
+    $ws->getStyle('A1')->getFont()->setBold(true)->setSize(11);
+    $ws->getStyle('A1')->applyFromArray($center);
+    $ws->mergeCells('A2:G2');
+    $ws->setCellValue('A2', 'CABANG DINAS KEHUTANAN WILAYAH BOJONEGORO');
+    $ws->getStyle('A2')->getFont()->setBold(true)->setSize(12);
+    $ws->getStyle('A2')->applyFromArray($center);
+    $ws->mergeCells('A3:G3');
+    $ws->setCellValue('A3', 'Jl. Panglima Polim No. 19 Bojonegoro · Email: cdk.bojonegoro@jatimprov.go.id');
+    $ws->getStyle('A3')->getFont()->setSize(9);
+    $ws->getStyle('A3')->applyFromArray($center);
+
+    // Judul dokumen
+    $ws->mergeCells('A4:G4');
+    $ws->setCellValue('A4', 'LEMBAR HASIL VERIFIKASI ALOKASI PUPUK BERSUBSIDI');
+    $ws->getStyle('A4')->getFont()->setBold(true)->setSize(13);
+    $ws->getStyle('A4')->applyFromArray($center);
+    $ws->mergeCells('A5:G5');
+    $ws->setCellValue('A5', 'Dokumen Rekonsiliasi Legalitas SK Perhutanan Sosial & Uji Spasial Titik Lahan Petani');
+    $ws->getStyle('A5')->getFont()->setSize(10);
+    $ws->getStyle('A5')->applyFromArray($center);
+
+    // Identitas
+    $r = 7;
+    $ws->setCellValue("A$r", 'Nama Kelompok'); $ws->setCellValue("B$r", $k['nama_kth']);
+    $ws->setCellValue("E$r", 'Putaran Usulan'); $ws->setCellValue("F$r", ($verInfo['label_versi'] ?? ('Versi ' . $versiKe)));
+    $ws->mergeCells("B$r:D$r"); $ws->mergeCells("F$r:G$r"); $r++;
+    $ws->setCellValue("A$r", 'Nomor SK PS'); $ws->setCellValue("B$r", ($k['nomor_sk'] ?: '-'));
+    $ws->setCellValue("E$r", 'Tanggal Usulan'); $ws->setCellValue("F$r", tgl_indo($verInfo['dibuat_pada'] ?? 'now'));
+    $ws->mergeCells("B$r:D$r"); $ws->mergeCells("F$r:G$r"); $r++;
+    $ws->setCellValue("A$r", 'Luas Areal SK'); $ws->setCellValue("B$r", ($luasSk > 0 ? number_format($luasSk, 2, ',', '.') . ' Ha' : '-'));
+    $ws->setCellValue("E$r", 'Total Luas Usulan'); $ws->setCellValue("F$r", number_format($hitung['luas'], 2, ',', '.') . ' Ha');
+    $ws->mergeCells("B$r:D$r"); $ws->mergeCells("F$r:G$r"); $r++;
+    $ws->setCellValue("A$r", 'Status Akhir'); $ws->setCellValue("B$r", $rekom);
+    $ws->mergeCells("B$r:G$r");
+    $ws->getStyle("A$r")->getFont()->setBold(true);
+    $ws->getStyle("B$r")->getFont()->setBold(true);
+    $ws->getStyle("B$r")->getFont()->getColor()->setARGB($rekom === 'DAPAT DITINDAKLANJUTI' ? 'FF15803D' : 'FFB91C1C');
+    $ws->getStyle('A7:G' . $r)->applyFromArray($wrapLeft);
+    $ws->getStyle('A7:G' . $r)->applyFromArray($thin);
+    $r += 2;
+
+    // Rekap
+    $ws->setCellValue("A$r", 'Total Petani'); $ws->setCellValue("B$r", 'Sesuai SK');
+    $ws->setCellValue("C$r", 'Belum Sesuai SK'); $ws->setCellValue("D$r", 'Dalam Peta');
+    $ws->setCellValue("E$r", 'Luar Peta'); $ws->setCellValue("F$r", 'Luas > 2 Ha'); $ws->setCellValue("G$r", 'Total Luas');
+    $ws->getStyle("A$r:G$r")->getFont()->setBold(true);
+    $ws->getStyle("A$r:G$r")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFD9EAD3');
+    $ws->getStyle("A$r:G$r")->applyFromArray($center);
+    $r++;
+    $ws->setCellValue("A$r", $hitung['total']);
+    $ws->setCellValue("B$r", $hitung['sesuai']);
+    $ws->setCellValue("C$r", $hitung['tidak']);
+    $ws->setCellValue("D$r", $hitung['dalam']);
+    $ws->setCellValue("E$r", $hitung['luar']);
+    $ws->setCellValue("F$r", $hitung['lebih']);
+    $ws->setCellValue("G$r", number_format($hitung['luas'], 2, ',', '.') . ' Ha');
+    $ws->getStyle("A$r:G$r")->applyFromArray($center);
+    $ws->getStyle("A" . ($r - 1) . ":G$r")->applyFromArray($thin);
+    $r += 2;
+
+    // Tabel detail
+    $ws->setCellValue("A$r", 'No'); $ws->setCellValue("B$r", 'NIK'); $ws->setCellValue("C$r", 'Nama Petani');
+    $ws->setCellValue("D$r", 'Luas (Ha)'); $ws->setCellValue("E$r", 'Kesesuaian SK'); $ws->setCellValue("F$r", 'Posisi Peta'); $ws->setCellValue("G$r", 'Catatan Hasil Telaah');
+    $ws->getStyle("A$r:G$r")->getFont()->setBold(true);
+    $ws->getStyle("A$r:G$r")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFE5E7EB');
+    $ws->getStyle("A$r:G$r")->applyFromArray($center);
+    $headRow = $r; $r++;
+    $no = 1;
+    foreach ($rows as $row) {
+        $okSK = ($row['status_sk'] ?? '') === 'Sesuai SK PS';
+        $okPeta = ($row['status_koordinat'] ?? '') === 'Dalam Peta PS';
+        $rLuas = $row['luas_lahan'] !== null ? (float)$row['luas_lahan'] : null;
+        $ws->setCellValue("A$r", $no++);
+        $ws->setCellValueExplicit("B$r", (string)($row['nik'] ?? ''), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+        $ws->setCellValue("C$r", (string)($row['nama'] ?? ''));
+        $ws->setCellValue("D$r", $rLuas !== null ? $rLuas : '');
+        $ws->setCellValue("E$r", $okSK ? 'Sesuai SK' : 'Belum Sesuai');
+        $ws->setCellValue("F$r", $okPeta ? 'Dalam Peta' : 'Luar Peta');
+        $ws->setCellValue("G$r", (string)($row['catatan'] ?? ''));
+        $ws->getStyle("A$r:B$r")->applyFromArray($center);
+        $ws->getStyle("C$r")->applyFromArray($wrapLeft);
+        $ws->getStyle("D$r")->applyFromArray($right);
+        if ($rLuas !== null) {
+            $ws->getStyle("D$r")->getNumberFormat()->setFormatCode('#,##0.00');
+            if ($rLuas > 2.0) {
+                $ws->getStyle("D$r")->getFont()->getColor()->setARGB('FF9E2A2B');
+                $ws->getStyle("D$r")->getFont()->setBold(true);
+            }
+        }
+        $ws->getStyle("E$r:F$r")->applyFromArray($center);
+        $ws->getStyle("G$r")->applyFromArray($wrapLeft);
+        $r++;
+    }
+    if (!empty($rows)) {
+        $ws->getStyle("A$headRow:G" . ($r - 1))->applyFromArray($thin);
+    }
+
+    // TTD
+    $r += 1;
+    $ws->mergeCells("A$r:C$r"); $ws->setCellValue("A$r", 'Mengetahui,');
+    $ws->mergeCells("E$r:G$r"); $ws->setCellValue("E$r", 'Bojonegoro, ' . tgl_indo('now'));
+    $ws->getStyle("A$r")->applyFromArray($center); $ws->getStyle("E$r")->applyFromArray($center);
+    $r++;
+    $ws->mergeCells("A$r:C$r"); $ws->setCellValue("A$r", 'Ketua Kelompok Tani Hutan');
+    $ws->mergeCells("E$r:G$r"); $ws->setCellValue("E$r", 'Tim Verifikator CDK Bojonegoro');
+    $ws->getStyle("A$r")->getFont()->setBold(true); $ws->getStyle("E$r")->getFont()->setBold(true);
+    $ws->getStyle("A$r")->applyFromArray($center); $ws->getStyle("E$r")->applyFromArray($center);
+    if ($verifikator['jabatan'] !== '') {
+        $r++;
+        $ws->mergeCells("E$r:G$r"); $ws->setCellValue("E$r", $verifikator['jabatan']);
+        $ws->getStyle("E$r")->applyFromArray($center);
+    }
+    $r += 4;
+    $ws->mergeCells("A$r:C$r"); $ws->setCellValue("A$r", '( ' . ($k['nama_kth'] ?? '') . ' )');
+    $ws->getStyle("A$r")->getFont()->setBold(true); $ws->getStyle("A$r")->applyFromArray($center);
+    $ws->mergeCells("E$r:G$r");
+    if ($verifikator['nama'] !== '') {
+        $ws->setCellValue("E$r", '( ' . $verifikator['nama'] . ' )');
+        $ws->getStyle("E$r")->getFont()->setBold(true);
+        if ($verifikator['nip'] !== '') {
+            $r++;
+            $ws->mergeCells("E$r:G$r"); $ws->setCellValue("E$r", 'NIP. ' . $verifikator['nip']);
+        }
+    } else {
+        $ws->setCellValue("E$r", '( ..................................................... )');
+    }
+    $ws->getStyle("E$r")->applyFromArray($center);
+
+    foreach (['A' => 6, 'B' => 20, 'C' => 26, 'D' => 13, 'E' => 17, 'F' => 16, 'G' => 45] as $col => $w) {
+        $ws->getColumnDimension($col)->setWidth($w);
+    }
+    $ws->getSheetView()->setZoomScale(90);
+    $ws->freezePane('A' . ($headRow + 1));
+
+    $fname = 'Lembar_Hasil_' . preg_replace('/[^\w\-]+/', '_', (string)$k['nama_kth']) . '_v' . $versiKe . '.xlsx';
+    return [$ss, $fname];
+}
+
+function export_lembar_hasil_excel(PDO $pdo, int $kthId, int $versiKe = 0): void {
+    [$ss, $fname] = build_lembar_hasil_spreadsheet($pdo, $kthId, $versiKe);
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment; filename="' . $fname . '"');
+    header('Cache-Control: max-age=0');
+    (new Xlsx($ss))->save('php://output');
+    exit;
+}

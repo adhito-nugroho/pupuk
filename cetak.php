@@ -46,6 +46,10 @@ foreach ($rows as $r) {
 }
 
 $rekom = ($hitung['tidak'] === 0 && $hitung['luar'] === 0 && $hitung['lebih'] === 0 && $hitung['total'] > 0) ? 'DAPAT DITINDAKLANJUTI' : 'PERLU REVISI';
+
+$verifikator = pengaturan_verifikator($pdo);
+$tglUsulanIndo = tgl_indo($verInfo['dibuat_pada'] ?? 'now');
+$tglCetakIndo = tgl_indo('now');
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -146,7 +150,9 @@ $rekom = ($hitung['tidak'] === 0 && $hitung['luar'] === 0 && $hitung['lebih'] ==
   <div>
     <b>Lembar Verifikasi Cetak:</b> <?= e($kth['nama_kth']) ?> (<?= e($verInfo['label_versi'] ?: ('Versi ' . $versiAktif)) ?>)
   </div>
-  <div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <a href="export.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>&mode=lembar" class="btn-print" style="text-decoration:none;">⬇ Unduh Excel</a>
+    <a href="pengaturan.php?kembali=<?= urlencode('cetak.php?kth_id=' . $kthId . '&v=' . $versiAktif) ?>" class="btn-print" style="text-decoration:none;background:#E5E7EB;color:#1B382B;">✏️ Verifikator: <?= $verifikator['nama'] !== '' ? e($verifikator['nama']) : 'Belum diatur' ?></a>
     <button class="btn-print" onclick="window.print()">🖨️ Cetak Dokumen</button>
   </div>
 </div>
@@ -175,7 +181,7 @@ $rekom = ($hitung['tidak'] === 0 && $hitung['luar'] === 0 && $hitung['lebih'] ==
     <td><?= e($kth['nomor_sk'] ?: '-') ?></td>
     <td><b>Tanggal Usulan</b></td>
     <td>:</td>
-    <td><?= date('d M Y', strtotime($verInfo['dibuat_pada'] ?? 'now')) ?></td>
+    <td><?= e($tglUsulanIndo) ?></td>
   </tr>
   <tr>
     <td><b>Luas Areal SK</b></td>
@@ -264,10 +270,20 @@ $rekom = ($hitung['tidak'] === 0 && $hitung['luar'] === 0 && $hitung['lebih'] ==
   </div>
 
   <div class="ttd-box">
-    <div>Bojonegoro, <?= date('d F Y') ?></div>
+    <div>Bojonegoro, <?= e($tglCetakIndo) ?></div>
     <div><b>Tim Verifikator CDK Bojonegoro</b></div>
+    <?php if ($verifikator['jabatan'] !== ''): ?>
+    <div><?= e($verifikator['jabatan']) ?></div>
+    <?php endif; ?>
     <div class="ttd-space"></div>
+    <?php if ($verifikator['nama'] !== ''): ?>
+    <div>( <b><u><?= e($verifikator['nama']) ?></u></b> )</div>
+    <?php if ($verifikator['nip'] !== ''): ?>
+    <div>NIP. <?= e($verifikator['nip']) ?></div>
+    <?php endif; ?>
+    <?php else: ?>
     <div>( ..................................................... )</div>
+    <?php endif; ?>
   </div>
 </div>
 

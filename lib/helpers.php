@@ -236,6 +236,80 @@ function e(?string $s): string {
     return htmlspecialchars((string)($s ?? ''), ENT_QUOTES, 'UTF-8');
 }
 
+/**
+ * Format tanggal Indonesia, mis. "12 Januari 2026".
+ * $sumber bisa timestamp int, string tanggal, atau null (now).
+ * $gaya: 'panjang' (12 Januari 2026), 'sedang' (12 Jan 2026),
+ *         'panjang_waktu' (12 Januari 2026 · 14:30), 'sedang_waktu' (12 Jan 2026 · 14:30).
+ */
+function tgl_indo($sumber = null, string $gaya = 'panjang'): string {
+    $bulanPanjang = [1 => 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    $bulanSedang  = [1 => 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    try {
+        if ($sumber === null || $sumber === '' || $sumber === 'now') {
+            $ts = time();
+        } elseif (is_int($sumber)) {
+            $ts = $sumber;
+        } elseif (is_numeric($sumber)) {
+            $ts = (int)$sumber;
+        } else {
+            $ts = strtotime((string)$sumber);
+            if ($ts === false) return '-';
+        }
+        $tgl = (int)date('j', $ts);
+        $bln = (int)date('n', $ts);
+        $thn = date('Y', $ts);
+        $pakaiSedang = (strpos($gaya, 'sedang') === 0);
+        $namaBulan = $pakaiSedang ? ($bulanSedang[$bln] ?? '') : ($bulanPanjang[$bln] ?? '');
+        $hasil = $tgl . ' ' . $namaBulan . ' ' . $thn;
+        if (strpos($gaya, '_waktu') !== false) {
+            $hasil .= ' · ' . date('H:i', $ts);
+        }
+        return $hasil;
+    } catch (Throwable $eTgl) {
+        return '-';
+    }
+}
+
+/**
+ * Pengaturan global key-value (dipakai untuk nama verifikator TTD).
+ * Tabel `pengaturan` dibuat otomatis bila belum ada.
+ */
+function pengaturan_table_ensure(PDO $pdo): void {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS pengaturan (
+        kunci VARCHAR(64) NOT NULL PRIMARY KEY,
+        nilai TEXT NULL,
+        diubah_pada TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+}
+
+function pengaturan_get(PDO $pdo, string $kunci, string $default = ''): string {
+    try {
+        pengaturan_table_ensure($pdo);
+        $st = $pdo->prepare('SELECT nilai FROM pengaturan WHERE kunci = ?');
+        $st->execute([$kunci]);
+        $v = $st->fetchColumn();
+        return ($v === false || $v === null) ? $default : (string)$v;
+    } catch (Throwable $e) {
+        return $default;
+    }
+}
+
+function pengaturan_set(PDO $pdo, string $kunci, string $nilai): void {
+    pengaturan_table_ensure($pdo);
+    $st = $pdo->prepare('INSERT INTO pengaturan (kunci, nilai) VALUES (?, ?)
+        ON DUPLICATE KEY UPDATE nilai = VALUES(nilai)');
+    $st->execute([$kunci, $nilai]);
+}
+
+function pengaturan_verifikator(PDO $pdo): array {
+    return [
+        'nama'    => trim(pengaturan_get($pdo, 'nama_verifikator', '')),
+        'nip'     => trim(pengaturan_get($pdo, 'nip_verifikator', '')),
+        'jabatan' => trim(pengaturan_get($pdo, 'jabatan_verifikator', '')),
+    ];
+}
+
 /** Flash message sederhana via session + fallback query parameter. */
 function flash_set(string $tipe, string $pesan): void {
     if (session_status() !== PHP_SESSION_ACTIVE && !headers_sent()) @session_start();
