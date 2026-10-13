@@ -3,6 +3,7 @@
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/lib/db.php';
 require_once __DIR__ . '/lib/helpers.php';
+require_once __DIR__ . '/lib/verify.php';
 
 $kthId = (int)($_GET['kth_id'] ?? 0);
 $vParam = isset($_GET['v']) ? (int)$_GET['v'] : null;
@@ -68,8 +69,56 @@ try {
 } catch (Throwable $eLap) { /* tetap pakai otomatis */ }
 
 $verifikator = pengaturan_verifikator($pdo);
+$ttdDinas = pengaturan_penandatangan_dinas($pdo);
 $tglUsulanIndo = tgl_indo($verInfo['dibuat_pada'] ?? 'now');
 $tglCetakIndo = tgl_indo('now');
+
+// --- Data tambahan format Dinas (cerminan export Excel verifikasi) ---
+$narasiDinas = '';
+try {
+    $stNar = $pdo->prepare('SELECT narasi FROM laporan WHERE kth_id = ? AND versi_ke = ? AND narasi IS NOT NULL AND narasi != "" ORDER BY id DESC LIMIT 1');
+    $stNar->execute([$kthId, $versiAktif]);
+    $rowNar = $stNar->fetch();
+    if ($rowNar && trim((string)$rowNar['narasi']) !== '') $narasiDinas = trim((string)$rowNar['narasi']);
+} catch (Throwable $eNar) {}
+if ($narasiDinas === '') {
+    $tahunNar = (int)($kth['tahun_usulan'] ?? date('Y'));
+    $narasiDinas = buat_narasi_default($kth, $tahunNar > 0 ? $tahunNar : (int)date('Y'), [
+        'total' => $hitung['total'], 'sesuai' => $hitung['sesuai'], 'tidak' => $hitung['tidak'],
+        'dalam' => $hitung['dalam'], 'luar' => $hitung['luar'],
+        'lebih_luas' => $hitung['lebih'], 'total_luas' => $hitung['luas'],
+    ]);
+}
+$isTindakDinas = (stripos($rekom, 'TINDAK') !== false);
+$rekomCatatanDinas = $isTindakDinas ? 'Dapat direkomendasikan.' : 'Perlu revisi / verifikasi lanjutan sebelum direkomendasikan.';
+$nomorSkDinas = trim((string)($kth['nomor_sk'] ?? ''));
+$adaSkDinas = ($nomorSkDinas !== '' && strtolower($nomorSkDinas) !== '-');
+$luasSkDinas = !empty($kth['luas_areal']) ? (float)$kth['luas_areal'] : 0.0;
+$desaDinas = ''; $kecDinas = '';
+try {
+    $qLocD = $pdo->prepare('SELECT desa, kecamatan FROM usulan_pupuk WHERE kth_id = ? AND versi_ke = ? AND (desa IS NOT NULL AND desa != "") LIMIT 1');
+    $qLocD->execute([$kthId, $versiAktif]);
+    $locD = $qLocD->fetch() ?: [];
+    $desaDinas = (string)($locD['desa'] ?? $kth['desa'] ?? '');
+    $kecDinas = (string)($locD['kecamatan'] ?? $kth['kecamatan'] ?? '');
+} catch (Throwable $eLocD) {}
+$titleCase = function (string $s): string {
+    $s = trim(mb_strtolower($s, 'UTF-8'));
+    return $s === '' ? '' : mb_convert_case($s, MB_CASE_TITLE, 'UTF-8');
+};
+$desaTDinas = $titleCase($desaDinas); $kecTDinas = $titleCase($kecDinas);
+if ($adaSkDinas) {
+    $luasIntD = (int)round($luasSkDinas);
+    $terbD = $luasIntD > 0 ? ' (' . terbilang_id($luasIntD) . ')' : '';
+    $luasTxtD = $luasSkDinas > 0 ? 'Seluas ± ' . number_format($luasSkDinas, 0, ',', '.') . $terbD . ' Hektare ' : '';
+    $wilTxtD = trim(($desaTDinas !== '' ? 'Di Desa ' . $desaTDinas . ' ' : '') . ($kecTDinas !== '' ? 'Kecamatan ' . $kecTDinas . ' ' : ''));
+    $catLegalDinas = trim(preg_replace('/\s+/', ' ', 'Sudah terdapat legalitas SK Menlhk Nomor SK: ' . $nomorSkDinas
+        . ' tentang Pemberian Persetujuan Pengelolaan Hutan Kemasyarakatan Kepada ' . ($kth['nama_kth'] ?? '')
+        . ' ' . $luasTxtD . 'Berada Dalam Kawasan Hutan Produksi Tetap Pada Kawasan Hutan Dengan Pengelolaan Khusus '
+        . ($wilTxtD !== '' ? $wilTxtD . ' ' : '') . 'Kabupaten Bojonegoro Provinsi Jawa Timur.'));
+} else {
+    $catLegalDinas = 'Belum terdapat legalitas SK Perhutanan Sosial (SK PS belum tercatat) untuk ' . ($kth['nama_kth'] ?? '') . '.';
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -172,6 +221,7 @@ $tglCetakIndo = tgl_indo('now');
   </div>
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
     <a href="export.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>&mode=lembar" class="btn-print" style="text-decoration:none;">⬇ Unduh Excel</a>
+    <a href="export.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>&mode=verifikasi" class="btn-print" style="text-decoration:none;background:#0E5E38;color:#fff;">⬇ Excel Verifikasi Dinas</a>
     <a href="pengaturan.php?kembali=<?= urlencode('cetak.php?kth_id=' . $kthId . '&v=' . $versiAktif) ?>" class="btn-print" style="text-decoration:none;background:#E5E7EB;color:#1B382B;">✏️ Verifikator: <?= $verifikator['nama'] !== '' ? e($verifikator['nama']) : 'Belum diatur' ?></a>
     <button class="btn-print" onclick="window.print()">🖨️ Cetak Dokumen</button>
   </div>
@@ -310,6 +360,89 @@ $tglCetakIndo = tgl_indo('now');
     <div>( ..................................................... )</div>
     <?php endif; ?>
   </div>
+</div>
+
+<!-- ═══ TAMBAHAN: FORMAT DINAS HASIL VERIFIKASI DATA (cerminan Excel) ═══ -->
+<div style="page-break-before:always;"></div>
+<div class="judul-dok" style="margin-top:6px;">HASIL VERIFIKASI DATA</div>
+<div class="judul-dok" style="margin-top:0;">USULAN PUPUK BERSUBSIDI BAGI PETANI HUTAN</div>
+<div class="subjudul-dok">KTH <?= e($kth['nama_kth']) ?> · <?= e($verInfo['label_versi'] ?: ('Versi ' . $versiAktif)) ?> · Sama persis dengan unduhan "Excel Verifikasi Dinas"</div>
+
+<table class="data-table" style="font-size:10px;">
+  <thead>
+    <tr>
+      <th width="4%" rowspan="2" style="vertical-align:middle;">No</th>
+      <th width="16%" rowspan="2" style="vertical-align:middle;">Indikator</th>
+      <th colspan="2">Kategori</th>
+      <th width="46%" rowspan="2" style="vertical-align:middle;">Catatan</th>
+    </tr>
+    <tr>
+      <th colspan="2" style="font-size:8px;font-weight:400;">(tanda ✓ pada kolom yang sesuai)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td rowspan="2" style="text-align:center;vertical-align:middle;"><b>1</b></td>
+      <td rowspan="2" style="text-align:center;vertical-align:middle;">Legalitas Kelompok</td>
+      <td style="text-align:center;"><b>Sudah ada SK PS</b></td>
+      <td style="text-align:center;"><b>Belum ada SK PS</b></td>
+      <td rowspan="2" style="text-align:justify;"><?= e($catLegalDinas) ?></td>
+    </tr>
+    <tr>
+      <td style="text-align:center;font-size:16px;font-weight:800;"><?= $adaSkDinas ? '✓' : '' ?></td>
+      <td style="text-align:center;font-size:16px;font-weight:800;"><?= $adaSkDinas ? '' : '✓' ?></td>
+    </tr>
+    <tr>
+      <td rowspan="2" style="text-align:center;vertical-align:middle;"><b>2</b></td>
+      <td rowspan="2" style="text-align:center;vertical-align:middle;">Daftar Pesanggem</td>
+      <td style="text-align:center;"><b>Sesuai SK PS</b></td>
+      <td style="text-align:center;"><b>Belum Sesuai SK PS</b></td>
+      <td rowspan="2" style="text-align:justify;"><?= e($narasiDinas) ?></td>
+    </tr>
+    <tr>
+      <td style="text-align:center;"><b><?= $hitung['sesuai'] ?> petani</b></td>
+      <td style="text-align:center;"><b><?= $hitung['tidak'] ?> petani</b></td>
+    </tr>
+    <tr>
+      <td colspan="2" style="vertical-align:middle;">Rekomendasi :</td>
+      <td style="text-align:center;"><b>Revisi</b></td>
+      <td style="text-align:center;"><b>Ditindaklanjuti</b></td>
+      <td rowspan="2" style="text-align:justify;vertical-align:middle;"><?= e($rekomCatatanDinas) ?></td>
+    </tr>
+    <tr>
+      <td colspan="2"></td>
+      <td style="text-align:center;font-size:16px;font-weight:800;"><?= !$isTindakDinas ? '✓' : '' ?></td>
+      <td style="text-align:center;font-size:16px;font-weight:800;"><?= $isTindakDinas ? '✓' : '' ?></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="ttd-grid" style="font-size:10.5px;">
+  <div style="width:32%;text-align:left;">
+    <div>Mengetahui,</div>
+    <div>Kepala Seksi RLPM</div>
+    <div class="ttd-space" style="height:60px;"></div>
+    <div><?= e($ttdDinas['kasi_nama']) ?></div>
+    <div>NIP. <?= e($ttdDinas['kasi_nip']) ?></div>
+  </div>
+  <div style="width:34%;text-align:left;">
+    <div>Penyuluh Kehutanan</div>
+    <div>Wilayah Binaan</div>
+    <div class="ttd-space" style="height:60px;"></div>
+    <div><?= e($ttdDinas['penyuluh_nama']) ?></div>
+    <div>NIP. <?= e($ttdDinas['penyuluh_nip']) ?></div>
+  </div>
+  <div style="width:30%;text-align:left;">
+    <div>Verifikator</div>
+    <div>&nbsp;</div>
+    <div class="ttd-space" style="height:60px;"></div>
+    <div><?= e($ttdDinas['verifikator_nama']) ?></div>
+    <div>NIP. <?= e($ttdDinas['verifikator_nip']) ?></div>
+  </div>
+</div>
+<div class="no-print" style="margin-top:16px;background:#0E5E38;">
+  <div style="font-size:11px;">Format Dinas di atas otomatis mengikuti <b>Excel Verifikasi Dinas</b> — nama penandatangan dapat diubah di Pengaturan.</div>
+  <a href="pengaturan.php?kembali=<?= urlencode('cetak.php?kth_id=' . $kthId . '&v=' . $versiAktif) ?>" class="btn-print" style="text-decoration:none;">✏️ Ubah Penandatangan</a>
 </div>
 
 </body>

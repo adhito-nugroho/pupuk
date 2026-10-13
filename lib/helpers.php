@@ -310,6 +310,61 @@ function pengaturan_verifikator(PDO $pdo): array {
     ];
 }
 
+/**
+ * Tiga penandatangan format Dinas Hasil Verifikasi:
+ * Kiri = Mengetahui, Kepala Seksi RLPM | Tengah = Penyuluh Kehutanan
+ * Wilayah Binaan | Kanan = Verifikator.
+ * Default mengikuti contoh dokumen dinas bila pengaturan masih kosong.
+ */
+function pengaturan_penandatangan_dinas(PDO $pdo): array {
+    $kasiNama = trim(pengaturan_get($pdo, 'nama_kasi_rlpm', ''));
+    $kasiNip  = trim(pengaturan_get($pdo, 'nip_kasi_rlpm', ''));
+    $luNama   = trim(pengaturan_get($pdo, 'nama_penyuluh', ''));
+    $luNip    = trim(pengaturan_get($pdo, 'nip_penyuluh', ''));
+    $ver = pengaturan_verifikator($pdo);
+    if ($kasiNama === '') { $kasiNama = 'Budy Hartono, S.Hut'; }
+    if ($kasiNip === '')  { $kasiNip  = '19760918 199603 1 003'; }
+    if ($luNama === '')   { $luNama   = 'Purwo Yulianto, SP'; }
+    if ($luNip === '')    { $luNip    = '19700715 199803 1 007'; }
+    if ($ver['nama'] === '') { $ver['nama'] = 'Muhammad Sauqi Al Bana'; }
+    if ($ver['nip'] === '')  { $ver['nip']  = '19980328 202204 1 001'; }
+    return [
+        'kasi_nama' => $kasiNama, 'kasi_nip' => $kasiNip,
+        'penyuluh_nama' => $luNama, 'penyuluh_nip' => $luNip,
+        'verifikator_nama' => $ver['nama'], 'verifikator_nip' => $ver['nip'],
+        'verifikator_jabatan' => $ver['jabatan'],
+    ];
+}
+
+/** Terbilang Indonesia untuk bilangan bulat (0 - triliun). */
+function terbilang_id(int $n): string {
+    $n = (int)$n;
+    if ($n < 0) return 'Minus ' . terbilang_id(-$n);
+    $kata = ['', 'Satu', 'Dua', 'Tiga', 'Empat', 'Lima', 'Enam', 'Tujuh', 'Delapan', 'Sembilan', 'Sepuluh', 'Sebelas'];
+    if ($n < 12) return $kata[$n];
+    if ($n < 20) return terbilang_id($n - 10) . ' Belas';
+    if ($n < 100) {
+        $d = intdiv($n, 10); $s = $n % 10;
+        return trim(terbilang_id($d) . ' Puluh' . ($s ? ' ' . terbilang_id($s) : ''));
+    }
+    if ($n < 200) return 'Seratus' . ($n - 100 ? ' ' . terbilang_id($n - 100) : '');
+    if ($n < 1000) {
+        $d = intdiv($n, 100); $s = $n % 100;
+        return trim(terbilang_id($d) . ' Ratus' . ($s ? ' ' . terbilang_id($s) : ''));
+    }
+    if ($n < 2000) return 'Seribu' . ($n - 1000 ? ' ' . terbilang_id($n - 1000) : '');
+    if ($n < 1000000) {
+        $d = intdiv($n, 1000); $s = $n % 1000;
+        return trim(terbilang_id($d) . ' Ribu' . ($s ? ' ' . terbilang_id($s) : ''));
+    }
+    if ($n < 1000000000) {
+        $d = intdiv($n, 1000000); $s = $n % 1000000;
+        return trim(terbilang_id($d) . ' Juta' . ($s ? ' ' . terbilang_id($s) : ''));
+    }
+    $d = intdiv($n, 1000000000); $s = $n % 1000000000;
+    return trim(terbilang_id($d) . ' Miliar' . ($s ? ' ' . terbilang_id($s) : ''));
+}
+
 /** Flash message sederhana via session + fallback query parameter. */
 function flash_set(string $tipe, string $pesan): void {
     if (session_status() !== PHP_SESSION_ACTIVE && !headers_sent()) @session_start();

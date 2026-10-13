@@ -13,4 +13,7 @@ if (!$kthId) { http_response_code(400); echo 'kth_id wajib.'; exit; }
 if ($mode === 'lembar' || $mode === 'lembar_hasil' || $mode === 'hasil') {
     export_lembar_hasil_excel(db(), $kthId, $vParam);
 }
+if ($mode === 'verifikasi' || $mode === 'dinas' || $mode === 'ringkas' || $mode === 'hasil_verifikasi') {
+    export_verifikasi_dinas_excel(db(), $kthId, $vParam);
+}
 export_laporan_excel(db(), $kthId, null, $vParam);
