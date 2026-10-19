@@ -20,6 +20,39 @@ function norm_nama(?string $s): string {
     return trim($s);
 }
 
+function cek_format_nik(?string $nik): ?string {
+    $raw = trim((string)($nik ?? ''));
+    $digits = norm_nik($raw);
+    if ($raw === '') {
+        return 'Format NIK tidak sesuai: NIK kosong (wajib 16 digit angka).';
+    }
+    if ($digits === '' || strlen($digits) !== 16 || !ctype_digit($digits)) {
+        return 'Format NIK tidak sesuai: "' . $raw . '" (wajib 16 digit angka, terbaca ' . strlen($digits) . ' digit).';
+    }
+    return null;
+}
+
+function cek_format_koordinat($xRaw, $yRaw, $x, $y): ?string {
+    $rx = trim((string)($xRaw ?? ''));
+    $ry = trim((string)($yRaw ?? ''));
+    if ($rx === '' && $ry === '') {
+        if ($x !== null && $y !== null) return null;
+        return 'Format titik koordinat tidak sesuai: koordinat X/Y belum lengkap (X="", Y="").';
+    }
+    if ($rx === '' || $ry === '') {
+        return 'Format titik koordinat tidak sesuai: koordinat X/Y belum lengkap (X="' . $rx . '", Y="' . $ry . '").';
+    }
+    if ($x === null || $y === null) {
+        return 'Format titik koordinat keliru: X="' . $rx . '", Y="' . $ry . '" tidak dapat dibaca sebagai koordinat.';
+    }
+    $fx = (float)$x;
+    $fy = (float)$y;
+    if ($fx < 90 || $fx > 145 || $fy < -15 || $fy > 15) {
+        return 'Format titik koordinat di luar rentang WGS84 Indonesia: X=' . $fx . ', Y=' . $fy . '.';
+    }
+    return null;
+}
+
 /**
  * Bersihkan koordinat mentah Excel ke float.
  * Menangani:

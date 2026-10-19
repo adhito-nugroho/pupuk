@@ -22,19 +22,26 @@ $q = $pdo->prepare('SELECT u.*, h.status_sk, h.status_koordinat, h.catatan, h.id
 $q->execute([$kthId, $versiAktif]);
 $rows = $q->fetchAll();
 
-$hitung = ['total' => count($rows), 'sesuai' => 0, 'tidak' => 0, 'dalam' => 0, 'luar' => 0, 'lebih_luas' => 0, 'total_luas' => 0.0];
-foreach ($rows as $r) {
+$hitung = ['total' => count($rows), 'sesuai' => 0, 'tidak' => 0, 'dalam' => 0, 'luar' => 0, 'lebih_luas' => 0, 'format' => 0, 'total_luas' => 0.0];
+foreach ($rows as $idx => $r) {
     if (($r['status_sk'] ?? '') === 'Sesuai SK PS') $hitung['sesuai']++; else $hitung['tidak']++;
     if (($r['status_koordinat'] ?? '') === 'Dalam Peta PS') $hitung['dalam']++; else $hitung['luar']++;
     $luasVal = $r['luas_lahan'] !== null ? (float)$r['luas_lahan'] : 0.0;
     $hitung['total_luas'] += $luasVal;
     if ($luasVal > 2.0) $hitung['lebih_luas']++;
+
+    $formatIssues = array_values(array_filter([
+        cek_format_nik((string)($r['nik'] ?? '')),
+        cek_format_koordinat($r['koordinat_x_raw'] ?? null, $r['koordinat_y_raw'] ?? null, $r['koordinat_x'] ?? null, $r['koordinat_y'] ?? null),
+    ]));
+    $rows[$idx]['_format_issues'] = $formatIssues;
+    if (!empty($formatIssues)) $hitung['format']++;
 }
 $pctSK = $hitung['total'] > 0 ? round($hitung['sesuai'] / $hitung['total'] * 100) : 0;
 $pctPeta = $hitung['total'] > 0 ? round($hitung['dalam'] / $hitung['total'] * 100) : 0;
 $luasSk = !empty($k['luas_areal']) ? (float)$k['luas_areal'] : 0.0;
 $pctLuasSk = $luasSk > 0 ? round(($hitung['total_luas'] / $luasSk) * 100, 1) : 0;
-$jmlMasalah = $hitung['tidak'] + $hitung['luar'] + $hitung['lebih_luas'];
+$jmlMasalah = $hitung['tidak'] + $hitung['luar'] + $hitung['lebih_luas'] + $hitung['format'];
 
 $qLoc = $pdo->prepare('SELECT desa, kecamatan FROM usulan_pupuk WHERE kth_id = ? AND versi_ke = ? AND (desa IS NOT NULL AND desa != "") LIMIT 1');
 $qLoc->execute([$kthId, $versiAktif]);
@@ -196,7 +203,7 @@ echo '<style>
         <span class="text-xs text-ink-muted">perlu atensi</span>
       </div>
       <div class="text-[11px] text-ink-muted mt-1 leading-tight">
-        <?= $hitung['tidak'] ?> belum SK · <?= $hitung['luar'] ?> luar peta<?= $hitung['lebih_luas'] > 0 ? " · {$hitung['lebih_luas']} > 2 Ha" : '' ?>
+        <?= $hitung['tidak'] ?> belum SK · <?= $hitung['luar'] ?> luar peta<?= $hitung['lebih_luas'] > 0 ? " · {$hitung['lebih_luas']} > 2 Ha" : '' ?><?= $hitung['format'] > 0 ? " · {$hitung['format']} format tidak valid" : '' ?>
       </div>
     </div>
   </div>
@@ -306,6 +313,9 @@ echo '<style>
           <?php if ($hitung['lebih_luas'] > 0): ?>
           <option value="lebih-luas">Luas &gt; 2 Ha (<?= $hitung['lebih_luas'] ?>)</option>
           <?php endif; ?>
+          <?php if ($hitung['format'] > 0): ?>
+          <option value="format">Format NIK/Koordinat Tidak Valid (<?= $hitung['format'] ?>)</option>
+          <?php endif; ?>
           <option value="bermasalah">Semua Masalah (<?= $jmlMasalah ?>)</option>
         </select>
       </div>
@@ -342,12 +352,20 @@ echo '<style>
         $rLuas = $r['luas_lahan'] !== null ? (float)$r['luas_lahan'] : null;
         $dsLuas = ($rLuas !== null && $rLuas > 2.0) ? 'lebih' : 'ok';
         $rowBg = $idx % 2 === 0 ? 'bg-white' : 'bg-[#FAF8F5]';
+        $formatIssues = $r['_format_issues'] ?? [];
+        $dsFormat = !empty($formatIssues) ? 'tidak' : 'ok';
+        $nikIssue = null; $koordIssue = null;
+        foreach ($formatIssues as $fi) {
+          if (str_starts_with($fi, 'Format NIK')) $nikIssue = $fi; else $koordIssue = $fi;
+        }
+        $catatanTersimpan = (string)($r['catatan'] ?? '');
+        $formatBelumTercatat = array_values(array_filter($formatIssues, fn($m) => mb_strpos($catatanTersimpan, $m) === false));
       ?>
         <tr class="tr-petani <?= $rowBg ?> hairline-row"
           id="baris-<?= (int)$r['id'] ?>"
           data-uid="<?= (int)$r['id'] ?>"
-          data-sk="<?= $dsSk ?>" data-ko="<?= $dsKo ?>" data-luas="<?= $dsLuas ?>" data-cari="<?= e(mb_strtolower(($r['nama'] ?? '') . ' ' . ($r['nik'] ?? ''), 'UTF-8')) ?>"
-          x-show="(filter === 'semua' || (filter === 'tidak-sk' && $el.dataset.sk !== 'ok') || (filter === 'luar' && $el.dataset.ko !== 'dalam') || (filter === 'lebih-luas' && $el.dataset.luas === 'lebih') || (filter === 'bermasalah' && ($el.dataset.sk !== 'ok' || $el.dataset.ko !== 'dalam' || $el.dataset.luas === 'lebih'))) && $el.dataset.cari.includes(cari.toLowerCase())">
+          data-sk="<?= $dsSk ?>" data-ko="<?= $dsKo ?>" data-luas="<?= $dsLuas ?>" data-format="<?= $dsFormat ?>" data-cari="<?= e(mb_strtolower(($r['nama'] ?? '') . ' ' . ($r['nik'] ?? ''), 'UTF-8')) ?>"
+          x-show="(filter === 'semua' || (filter === 'tidak-sk' && $el.dataset.sk !== 'ok') || (filter === 'luar' && $el.dataset.ko !== 'dalam') || (filter === 'lebih-luas' && $el.dataset.luas === 'lebih') || (filter === 'format' && $el.dataset.format === 'tidak') || (filter === 'bermasalah' && ($el.dataset.sk !== 'ok' || $el.dataset.ko !== 'dalam' || $el.dataset.luas === 'lebih' || $el.dataset.format === 'tidak'))) && $el.dataset.cari.includes(cari.toLowerCase())">
           <td class="px-3 py-2 text-center text-ink-muted tabular-nums">
             <?= e($r['no_urut'] ?? ($idx + 1)) ?>
           </td>
@@ -362,9 +380,15 @@ echo '<style>
                 📍 <?= number_format((float)$r['koordinat_x'], 6) ?>, <?= number_format((float)$r['koordinat_y'], 6) ?>
               </div>
             <?php endif; ?>
+            <?php if ($koordIssue !== null): ?>
+              <div class="text-[9px] text-audit-revisi font-semibold mt-0.5 leading-tight" title="<?= e($koordIssue) ?>">Format titik koordinat tidak valid</div>
+            <?php endif; ?>
           </td>
           <td class="px-3 py-2 font-mono text-[11px] text-ink-muted">
-            <?= e($r['nik'] ?? '-') ?>
+            <div><?= e($r['nik'] ?? '-') ?></div>
+            <?php if ($nikIssue !== null): ?>
+              <div class="text-[9px] text-audit-revisi font-semibold font-sans mt-0.5 leading-tight" title="<?= e($nikIssue) ?>">Format NIK tidak valid</div>
+            <?php endif; ?>
           </td>
           <td class="px-3 py-2 text-right font-mono text-[11px] tabular-nums">
             <?php if ($rLuas !== null): ?>
@@ -385,6 +409,11 @@ echo '<style>
             <?= badge_koord((string)($r['status_koordinat'] ?? '')) ?>
           </td>
           <td class="px-3 py-2" x-data="{ edit: false, val: <?= e(json_encode((string)($r['catatan'] ?? ''), JSON_UNESCAPED_UNICODE)) ?>, saved: true }">
+            <?php if (!empty($formatBelumTercatat)): ?>
+              <div class="mb-1 px-2 py-1 rounded border-l-2 border-audit-revisi bg-red-50 text-[10px] text-audit-revisi leading-snug">
+                <b>Keterangan format:</b> <?= e(implode(' ', $formatBelumTercatat)) ?>
+              </div>
+            <?php endif; ?>
             <template x-if="!edit">
               <div @click="edit = true" class="cursor-text hover:bg-kadaster-light rounded px-2 py-1 min-h-[1.75rem] flex items-center justify-between group border border-transparent hover:border-kadaster-border" title="Klik untuk mengedit catatan verifikasi">
                 <span class="text-xs text-ink" x-text="val || '—'"></span>

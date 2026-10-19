@@ -55,6 +55,10 @@ function verifikasi_satu_kth(PDO $pdo, int $kthId, int $versiKe = 0): array {
 
         $catatanPieces = [];
         $pct = null; $namaMirip = null;
+
+        $nikFormatErr = cek_format_nik((string)$u['nik']);
+        if ($nikFormatErr) $catatanPieces[] = $nikFormatErr;
+
         if (!$cocok) {
             [$pct, $namaMirip] = cari_nama_mirip((string)$u['nama'], $daftarSK);
             if ($pct !== null && $pct > 80.0 && $namaMirip) {
@@ -66,6 +70,8 @@ function verifikasi_satu_kth(PDO $pdo, int $kthId, int $versiKe = 0): array {
 
         $x = $u['koordinat_x'] !== null ? (float)$u['koordinat_x'] : null;
         $y = $u['koordinat_y'] !== null ? (float)$u['koordinat_y'] : null;
+        $koordFormatErr = cek_format_koordinat($u['koordinat_x_raw'] ?? null, $u['koordinat_y_raw'] ?? null, $x, $y);
+        if ($koordFormatErr) $catatanPieces[] = $koordFormatErr;
         // Koordinat koreksi manual (jika ada) dipakai sebagai posisi efektif
         // untuk uji spasial — koordinat asli di usulan_pupuk tetap utuh.
         $rowLama = $lama[(int)$u['id']] ?? null;
@@ -76,7 +82,9 @@ function verifikasi_satu_kth(PDO $pdo, int $kthId, int $versiKe = 0): array {
         if ($efX === null || $efY === null) {
             $statusKoord = 'Luar Peta PS';
             $cLuar++;
-            $catatanPieces[] = 'Titik koordinat tidak terbaca — dianggap di luar peta.';
+            if ($koordFormatErr === null) {
+                $catatanPieces[] = 'Titik koordinat tidak terbaca — dianggap di luar peta.';
+            }
         } elseif (!$rings) {
             $statusKoord = 'Luar Peta PS';
             $cLuar++;
@@ -115,6 +123,13 @@ function verifikasi_satu_kth(PDO $pdo, int $kthId, int $versiKe = 0): array {
             && ($rowLama['status_koordinat'] ?? null) === $statusKoord
             && trim((string)($rowLama['catatan'] ?? '')) !== '') {
             $catatan = (string)$rowLama['catatan'];
+            $tambahanFormat = array_filter($catatanPieces, fn($m) =>
+                (str_starts_with($m, 'Format NIK') || str_starts_with($m, 'Format titik koordinat'))
+                && mb_strpos($catatan, $m) === false
+            );
+            if (!empty($tambahanFormat)) {
+                $catatan = trim($catatan . ' ' . implode(' ', $tambahanFormat));
+            }
         }
 
         $ins->execute([$u['id'], $kthId, $versiKe, $statusSK, $statusKoord, trim($catatan), $pct, $namaMirip, $korX, $korY, ($rowLama['dikoreksi_pada'] ?? null)]);
