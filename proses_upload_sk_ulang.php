@@ -78,6 +78,9 @@ try {
     ];
 
     flash_set('ok', 'Berhasil membaca seluruh ' . $parsed['total'] . ' data anggota dari berkas SK (' . basename($file['name']) . '). Silakan periksa dan klik tombol "Simpan & Lanjut" di bawah tabel.');
+    if (!empty($parsed['header_warnings'])) {
+        flash_set('warn', "Pemeriksaan header daftar anggota SK:\n- " . implode("\n- ", $parsed['header_warnings']));
+    }
 } catch (Throwable $e) {
     flash_set('error', 'Gagal membaca berkas SK: ' . $e->getMessage());
 }

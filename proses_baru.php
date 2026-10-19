@@ -139,6 +139,20 @@ function proses_db_simpan(string $namaKth, int $tahun, string $namaKph, string $
             $pesan .= " (Perhatian: ada {$skParsed['perlu_dicek_count']} baris yang ditandai kuning dan perlu dicek manual).";
         }
         flash_set('ok', $pesan);
+
+        $catatanValidasi = [];
+        if (!empty($ex['errors'])) {
+            $totalErr = (int)($ex['errors_total'] ?? count($ex['errors']));
+            $contohErr = array_slice($ex['errors'], 0, 8);
+            $catatanValidasi[] = "Pemeriksaan data usulan menemukan {$totalErr} baris yang tidak sesuai template:\n- " . implode("\n- ", $contohErr)
+                . ($totalErr > count($contohErr) ? "\n- ... dan " . ($totalErr - count($contohErr)) . ' baris lainnya.' : '');
+        }
+        if (!empty($skParsed['header_warnings'])) {
+            $catatanValidasi[] = "Pemeriksaan header daftar anggota SK:\n- " . implode("\n- ", $skParsed['header_warnings']);
+        }
+        if (!empty($catatanValidasi)) {
+            flash_set('warn', implode("\n\n", $catatanValidasi));
+        }
         if (session_status() === PHP_SESSION_ACTIVE) @session_write_close();
         header('Location: konfirmasi_sk.php?kth_id=' . $kthId);
         exit;

@@ -183,6 +183,12 @@ try {
     $pdo->commit();
 
     flash_set('ok', '✅ Berkas usulan perbaikan ' . $labelVersi . ' berhasil diunggah dan diverifikasi. Hasil verifikasi kini menampilkan versi terbaru.');
+    if (!empty($ex['errors'])) {
+        $totalErr = (int)($ex['errors_total'] ?? count($ex['errors']));
+        $contohErr = array_slice($ex['errors'], 0, 8);
+        flash_set('warn', "Pemeriksaan data usulan menemukan {$totalErr} baris yang tidak sesuai template:\n- " . implode("\n- ", $contohErr)
+            . ($totalErr > count($contohErr) ? "\n- ... dan " . ($totalErr - count($contohErr)) . ' baris lainnya.' : ''));
+    }
     header('Location: hasil.php?kth_id=' . $kthId . '&v=' . $versiBaru);
     exit;
 

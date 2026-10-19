@@ -2,8 +2,69 @@
 // Parser Excel/CSV Daftar Anggota SK (PhpSpreadsheet).
 // Membaca file Excel/CSV hasil ekstraksi dokumen SK dan melakukan validasi awal.
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/template_check.php';
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
+
+/**
+ * Cari baris header daftar anggota SK dan petakan kolomnya.
+ * Header dianggap sesuai bila memuat kolom NIK dan NAMA.
+ */
+function analisis_header_sk($ws, int $maxRow, int $maxCol): array {
+    $kandidat = null;
+    $contohBaris = null;
+    $contohRow = null;
+
+    for ($r = 1; $r <= min(20, $maxRow); $r++) {
+        $cells = [];
+        $colMap = [];
+        $hasNik = false;
+        $hasNama = false;
+        $adaTeks = false;
+
+        for ($c = 1; $c <= $maxCol; $c++) {
+            $v = trim((string)$ws->getCell([$c, $r])->getCalculatedValue());
+            $cells[$c] = $v;
+            if ($v !== '') $adaTeks = true;
+
+            $key = template_key_sk($v);
+            if ($key === null) continue;
+            if ($key === 'nik') $hasNik = true;
+            if ($key === 'nama') $hasNama = true;
+            if (!isset($colMap[$key])) $colMap[$key] = $c;
+        }
+
+        if ($contohBaris === null && $adaTeks) {
+            $contohBaris = $cells;
+            $contohRow = $r;
+        }
+        if (!$hasNik && !$hasNama) continue;
+
+        $info = [
+            'row' => $r,
+            'cells' => $cells,
+            'col_map' => $colMap,
+            'has_nik' => $hasNik,
+            'has_nama' => $hasNama,
+            'valid' => ($hasNik && $hasNama),
+        ];
+        if ($info['valid']) return $info;
+        if ($kandidat === null) $kandidat = $info;
+    }
+
+    if ($kandidat !== null) return $kandidat;
+
+    return [
+        'row' => null,
+        'cells' => [],
+        'col_map' => [],
+        'has_nik' => false,
+        'has_nama' => false,
+        'valid' => false,
+        'contoh_baris' => $contohBaris,
+        'contoh_row' => $contohRow,
+    ];
+}
 
 /**
  * Ambil daftar nama sheet di workbook Excel (untuk konfirmasi multi-sheet).
@@ -50,23 +111,13 @@ function preview_sheets_sk(string $path): array {
         $maxRow = $ws->getHighestDataRow();
         $maxCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($ws->getHighestDataColumn());
         // cari header NIK+NAMA
-        $headerRow = null;
-        $colNik = null; $colNama = null;
-        for ($r = 1; $r <= min(15, $maxRow); $r++) {
-            $cells = [];
-            for ($c = 1; $c <= $maxCol; $c++) {
-                $v = trim((string)$ws->getCell([$c, $r])->getCalculatedValue());
-                $cells[$c] = mb_strtoupper($v, 'UTF-8');
-            }
-            $joined = implode(' ', $cells);
-            if (strpos($joined, 'NIK') !== false && (strpos($joined, 'NAMA') !== false || strpos($joined, 'DESA') !== false)) {
-                $headerRow = $r;
-                foreach ($cells as $c => $v) {
-                    if (strpos($v, 'NIK') !== false && $colNik === null) $colNik = $c;
-                    if (strpos($v, 'NAMA') !== false && $colNama === null) $colNama = $c;
-                }
-                break;
-            }
+        $analisis = analisis_header_sk($ws, $maxRow, $maxCol);
+        $headerRow = $analisis['row'];
+        $colNik = $analisis['has_nik'] ? ($analisis['col_map']['nik'] ?? null) : null;
+        $colNama = $analisis['has_nama'] ? ($analisis['col_map']['nama'] ?? null) : null;
+        $kolomHilang = [];
+        foreach (['nik' => 'NIK', 'nama' => 'NAMA'] as $key => $label) {
+            if (!isset($analisis['col_map'][$key])) $kolomHilang[] = $label;
         }
         // hitung baris non-kosong setelah header (dibatas untuk file dengan format hingga 1M baris)
         $dataRows = 0;
@@ -103,7 +154,9 @@ function preview_sheets_sk(string $path): array {
             'max_row' => $maxRow,
             'header_row' => $headerRow,
             'data_rows' => $dataRows,
-            'has_nik_header' => $colNik !== null,
+            'has_nik_header' => $analisis['valid'],
+            'missing_header' => $kolomHilang,
+            'header_labels' => template_header_list($analisis['cells']),
             'samples' => $samples,
         ];
     }
@@ -137,39 +190,42 @@ function parse_excel_sk(string $path, ?string $sheetName = null): array {
     $maxRow = $ws->getHighestDataRow();
     $maxCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($ws->getHighestDataColumn());
 
-    // 1) Cari baris header (berisi NIK dan NAMA / DESA), scan 15 baris pertama
-    $headerRow = null;
-    $colMap = [];
-    for ($r = 1; $r <= min(15, $maxRow); $r++) {
-        $cells = [];
-        for ($c = 1; $c <= $maxCol; $c++) {
-            $v = trim((string)$ws->getCell([$c, $r])->getCalculatedValue());
-            $cells[$c] = mb_strtoupper($v, 'UTF-8');
+    // 1) Cari dan validasi baris header daftar anggota SK.
+    $analisis = analisis_header_sk($ws, $maxRow, $maxCol);
+    if (!$analisis['valid']) {
+        $missing = [];
+        if (!$analisis['has_nik']) $missing[] = 'NIK';
+        if (!$analisis['has_nama']) $missing[] = 'NAMA';
+
+        if ($analisis['row'] === null) {
+            $contoh = template_header_list($analisis['contoh_baris'] ?? []);
+            throw new RuntimeException(
+                "Format daftar anggota SK TIDAK SESUAI template.\n" .
+                "Sheet \"" . $ws->getTitle() . "\" — baris header (wajib memuat kolom NIK dan NAMA) tidak ditemukan pada 20 baris pertama.\n" .
+                "Baris pertama yang terbaca: " . ($contoh !== '' ? $contoh : '(sheet kosong)') . ".\n" .
+                "Pastikan file berisi tabel lampiran SK dengan header kolom NIK dan NAMA. Bila file memiliki beberapa sheet, pilih sheet yang benar."
+            );
         }
-        $joined = implode(' ', $cells);
-        if (strpos($joined, 'NIK') !== false && (strpos($joined, 'NAMA') !== false || strpos($joined, 'DESA') !== false)) {
-            $headerRow = $r;
-            foreach ($cells as $c => $v) {
-                if ($v === '') continue;
-                if (strpos($v, 'NIK') !== false && !isset($colMap['nik'])) $colMap['nik'] = $c;
-                elseif (strpos($v, 'NAMA') !== false && !isset($colMap['nama'])) $colMap['nama'] = $c;
-                elseif ($v === 'L/P' || $v === 'JK' || strpos($v, 'KELAMIN') !== false) $colMap['jk'] = $c;
-                elseif (strpos($v, 'DESA') !== false) $colMap['desa'] = $c;
-                elseif (strpos($v, 'KECAMATAN') !== false || strpos($v, 'KEC') !== false) $colMap['kecamatan'] = $c;
-                elseif (strpos($v, 'CATATAN') !== false || strpos($v, 'NOTE') !== false) $colMap['catatan'] = $c;
-            }
-            foreach ($cells as $c => $v) {
-                if ($v === 'NO' || $v === 'NOMOR' || $v === 'NO.') { $colMap['no'] = $c; break; }
-            }
-            break;
-        }
+
+        $terdeteksi = template_header_list($analisis['cells']);
+        throw new RuntimeException(
+            "Format daftar anggota SK TIDAK SESUAI template.\n" .
+            "Sheet \"" . $ws->getTitle() . "\" — header terbaca pada baris {$analisis['row']}.\n" .
+            "Kolom wajib yang tidak ditemukan: " . implode(', ', $missing) . ".\n" .
+            "Header yang terbaca: " . ($terdeteksi !== '' ? $terdeteksi : '(tidak ada teks header)') . ".\n" .
+            "Template daftar anggota SK minimal memuat kolom NIK dan NAMA (didukung juga NO, JENIS KELAMIN, DESA, KECAMATAN, CATATAN). Perbaiki nama header atau pilih sheet yang benar, lalu unggah ulang."
+        );
     }
 
-    if ($headerRow === null) {
-        // Fallback default: A=No, B=Nama, C=NIK, D=L/P, E=Desa, F=Kecamatan, G=Catatan
-        $headerRow = 1;
+    $headerRow = (int)$analisis['row'];
+    $colMap = $analisis['col_map'];
+
+    $headerWarnings = [];
+    foreach (['jk' => 'JENIS KELAMIN (L/P)', 'desa' => 'DESA', 'kecamatan' => 'KECAMATAN'] as $key => $label) {
+        if (!isset($colMap[$key])) {
+            $headerWarnings[] = "Kolom {$label} tidak ditemukan (opsional; pencocokan tetap memakai NIK dan NAMA).";
+        }
     }
-    $colMap += ['no' => 1, 'nama' => 2, 'nik' => 3, 'jk' => 4, 'desa' => 5, 'kecamatan' => 6, 'catatan' => 7];
 
     $rows = [];
     $seenNik = [];
@@ -182,14 +238,14 @@ function parse_excel_sk(string $path, ?string $sheetName = null): array {
             return ($v !== null) ? trim((string)$v) : '';
         };
 
-        $noRaw = $get($colMap['no']);
+        $noRaw = isset($colMap['no']) ? $get($colMap['no']) : '';
         $nama = norm_nama($get($colMap['nama']));
         $nikRaw = $get($colMap['nik']);
         $nik = norm_nik($nikRaw);
-        $jk = mb_strtoupper($get($colMap['jk']), 'UTF-8');
-        $desa = norm_nama($get($colMap['desa']));
-        $kecamatan = norm_nama($get($colMap['kecamatan']));
-        $catatanAwal = $get($colMap['catatan'] ?? 999);
+        $jk = isset($colMap['jk']) ? mb_strtoupper($get($colMap['jk']), 'UTF-8') : '';
+        $desa = isset($colMap['desa']) ? norm_nama($get($colMap['desa'])) : '';
+        $kecamatan = isset($colMap['kecamatan']) ? norm_nama($get($colMap['kecamatan'])) : '';
+        $catatanAwal = isset($colMap['catatan']) ? $get($colMap['catatan']) : '';
 
         // Jika satu baris kosong total, lewati (dengan deteksi akhir data untuk file dengan 1M baris terformat)
         if ($nama === '' && $nik === '' && $desa === '' && $kecamatan === '') {
@@ -222,7 +278,7 @@ function parse_excel_sk(string $path, ?string $sheetName = null): array {
         // Validasi NIK 16 digit
         if (strlen($nik) !== 16 || !ctype_digit($nik)) {
             $perluDicek = true;
-            $catatanList[] = 'NIK tidak valid (bukan 16 digit)';
+            $catatanList[] = 'NIK tidak valid: "' . $nikRaw . '" (harus 16 digit, terbaca ' . strlen($nik) . ' digit)';
         } elseif (isset($seenNik[$nik])) {
             // NIK duplikat
             $perluDicek = true;
@@ -255,6 +311,8 @@ function parse_excel_sk(string $path, ?string $sheetName = null): array {
 
     return [
         'header_row' => $headerRow,
+        'template_ok' => true,
+        'header_warnings' => $headerWarnings,
         'rows' => $rows,
         'total' => count($rows),
         'perlu_dicek_count' => $perluDicekCount,

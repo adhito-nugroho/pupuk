@@ -111,7 +111,7 @@ wizard(1);
               <?= e($pr['name']) ?>
             </span>
             <span class="text-[11px] font-mono px-1.5 py-0.5 border <?= $hasHeader ? 'bg-audit-validBg text-audit-valid border-audit-validBorder' : 'bg-audit-warnBg text-audit-warn border-audit-warnBorder' ?>">
-              <?= $hasHeader ? '✓ Ada header NIK' : '✗ Tanpa header NIK' ?>
+              <?= $hasHeader ? '✓ Header sesuai (NIK + NAMA)' : '✗ Header tidak sesuai' ?>
             </span>
             <?php if ($isBest): ?>
               <span class="text-[10px] font-bold px-1.5 py-0.5 bg-forest-900 text-white uppercase tracking-wider">Rekomendasi</span>
@@ -131,8 +131,13 @@ wizard(1);
               </span>
             <?php else: ?>
               <span class="px-2 py-1 bg-audit-revisiBg border border-audit-revisiBorder text-audit-revisi">
-                Header NIK/NAMA tidak ditemukan di 15 baris pertama
+                Header tidak sesuai<?= !empty($pr['missing_header']) ? ': ' . e(implode(', ', $pr['missing_header'])) . ' tidak ditemukan' : ' (NIK/NAMA tidak ditemukan di 20 baris pertama)' ?>
               </span>
+              <?php if (!empty($pr['header_labels'])): ?>
+              <span class="px-2 py-1 bg-white border border-kadaster-border text-ink-muted">
+                Terbaca: <?= e($pr['header_labels']) ?>
+              </span>
+              <?php endif; ?>
             <?php endif; ?>
           </div>
 

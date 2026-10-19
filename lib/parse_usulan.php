@@ -6,6 +6,7 @@
 //    "TITIK KOORDINAT LAHAN" yang di-merge), atau
 //  - satu kolom berisi "X: ... Y: ..." sekaligus.
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/template_check.php';
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
@@ -21,78 +22,111 @@ function parse_excel_usulan(string $path): array {
     $maxRow = $ws->getHighestDataRow();
     $maxCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($ws->getHighestDataColumn());
 
-    // 1) Cari baris header (berisi NIK + NAMA), scan 15 baris pertama.
-    $headerRow = null; $colMap = [];
-    for ($r = 1; $r <= min(15, $maxRow); $r++) {
+    // 1) Cari baris header (berisi NIK + NAMA), scan 20 baris pertama.
+    $headerRow = null; $colMap = []; $headerCells = [];
+    $koordinatSatuKolom = false;
+    for ($r = 1; $r <= min(20, $maxRow); $r++) {
         $cells = [];
+        $keys = [];
+        $adaNik = false;
+        $adaNama = false;
         for ($c = 1; $c <= $maxCol; $c++) {
             $v = trim((string)$ws->getCell([$c, $r])->getCalculatedValue());
-            $cells[$c] = mb_strtoupper($v, 'UTF-8');
+            $cells[$c] = $v;
+            $key = template_key_usulan($v);
+            $keys[$c] = $key;
+            if ($key === 'nik') $adaNik = true;
+            if ($key === 'nama') $adaNama = true;
         }
-        $joined = implode(' ', $cells);
-        if (strpos($joined, 'NIK') !== false && strpos($joined, 'NAMA') !== false) {
-            $headerRow = $r;
-            foreach ($cells as $c => $v) {
-                if ($v === '') continue;
-                if (strpos($v, 'NIK') !== false && !isset($colMap['nik'])) $colMap['nik'] = $c;
-                elseif (strpos($v, 'NAMA') !== false && !isset($colMap['nama'])) $colMap['nama'] = $c;
-                elseif (strpos($v, 'KELAMIN') !== false || $v === 'L/P' || $v === 'JENIS KELAMIN') $colMap['jk'] = $c;
-                elseif ($v === 'RT') $colMap['rt'] = $c;
-                elseif ($v === 'RW') $colMap['rw'] = $c;
-                elseif (strpos($v, 'DESA') !== false) $colMap['desa'] = $c;
-                elseif (strpos($v, 'KECAMATAN') !== false || strpos($v, 'KEC') !== false) $colMap['kecamatan'] = $c;
-                elseif (strpos($v, 'POLA') !== false) $colMap['pola'] = $c;
-                elseif (strpos($v, 'PETAK') !== false) $colMap['petak'] = $c;
-                elseif (strpos($v, 'LUAS') !== false) $colMap['luas'] = $c;
-                elseif (strpos($v, 'SK') !== false || strpos($v, 'PKS') !== false) $colMap['no_sk'] = $c;
-                elseif (strpos($v, 'KOORDINAT') !== false || strpos($v, 'TITIK') !== false || strpos($v, 'EASTING') !== false || strpos($v, 'LONG') !== false || $v === 'X') {
-                    if (!isset($colMap['x'])) {
-                        $colMap['x'] = $c;
-                        // Cek apakah cell ini di-merge dengan kolom berikutnya (misal M4:N4 "TITIK KOORDINAT LAHAN")
-                        $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c);
-                        $cellCoord = $colLetter . $r;
-                        foreach ($ws->getMergeCells() as $mRange) {
-                            if (strpos($mRange, $cellCoord . ':') === 0) {
-                                $mParts = explode(':', $mRange);
-                                if (isset($mParts[1])) {
-                                    $endCol = preg_replace('/\d+/', '', $mParts[1]);
-                                    $endIdx = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($endCol);
-                                    if ($endIdx > $c && !isset($colMap['y'])) {
-                                        $colMap['y'] = $endIdx;
-                                    }
+        // Header harus memiliki kolom NIK dan NAMA pada sel yang terpisah.
+        if (!$adaNik || !$adaNama) continue;
+
+        $headerRow = $r;
+        $headerCells = $cells;
+        foreach ($cells as $c => $v) {
+            $key = $keys[$c] ?? null;
+            if ($key === null) continue;
+
+            if ($key === 'koordinat' || $key === 'x') {
+                if (!isset($colMap['x'])) {
+                    $colMap['x'] = $c;
+                    if ($key === 'koordinat') $koordinatSatuKolom = true;
+
+                    // Cek apakah cell ini di-merge dengan kolom berikutnya (misal M4:N4 "TITIK KOORDINAT LAHAN")
+                    $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c);
+                    $cellCoord = $colLetter . $r;
+                    foreach ($ws->getMergeCells() as $mRange) {
+                        if (strpos($mRange, $cellCoord . ':') === 0) {
+                            $mParts = explode(':', $mRange);
+                            if (isset($mParts[1])) {
+                                $endCol = preg_replace('/\d+/', '', $mParts[1]);
+                                $endIdx = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($endCol);
+                                if ($endIdx > $c && !isset($colMap['y'])) {
+                                    $colMap['y'] = $endIdx;
                                 }
-                                break;
                             }
+                            break;
                         }
-                    } elseif (!isset($colMap['y'])) {
-                        $colMap['y'] = $c;
                     }
-                } elseif (strpos($v, 'NORTHING') !== false || strpos($v, 'LAT') !== false || $v === 'Y') {
+                } elseif (!isset($colMap['y'])) {
                     $colMap['y'] = $c;
                 }
+                continue;
             }
-            // Nomor urut: kolom pertama bila headernya NO/NOMOR
-            foreach ($cells as $c => $v) {
-                if ($v === 'NO' || $v === 'NOMOR' || $v === 'NO.') { $colMap['no'] = $c; break; }
+            if ($key === 'y') {
+                if (!isset($colMap['y'])) $colMap['y'] = $c;
+                continue;
             }
-            break;
+            if (!isset($colMap[$key])) $colMap[$key] = $c;
         }
+        break;
     }
 
     if ($headerRow === null) {
         throw new RuntimeException(
-            "Format berkas Excel tidak sesuai standar usulan pupuk.\n" .
-            "Baris judul/header kolom (NIK, NAMA, LUAS LAHAN, TITIK KOORDINAT) tidak ditemukan pada 15 baris pertama sheet.\n" .
-            "Pastikan Anda mengunggah file Excel dengan format tabel yang benar. [UNDUH_TEMPLATE]"
+            "Format berkas Excel usulan TIDAK SESUAI template resmi.\n" .
+            "Baris header (wajib memuat kolom NIK dan NAMA) tidak ditemukan pada 20 baris pertama sheet \"" . $ws->getTitle() . "\".\n" .
+            "Pastikan tabel usulan diawali baris judul kolom sesuai template, bukan langsung berisi data.\n" .
+            "Silakan unduh template resmi di bawah, salin data Anda ke template tersebut, lalu unggah ulang. [UNDUH_TEMPLATE]"
         );
     }
 
-    // Jika kolom X ada tapi Y belum terpetakan, cek kolom berikutnya
+    // Jika header koordinat hanya satu kolom dan tidak di-merge, periksa kolom berikutnya.
     if (isset($colMap['x']) && !isset($colMap['y'])) {
         $nextC = $colMap['x'] + 1;
-        if ($nextC <= $maxCol && !in_array($nextC, $colMap, true)) {
+        $nextLabel = $nextC <= $maxCol ? trim((string)($headerCells[$nextC] ?? '')) : '';
+        $nextKey = $nextLabel !== '' ? template_key_usulan($nextLabel) : null;
+        if ($nextC <= $maxCol && ($nextLabel === '' || $nextKey === 'y')) {
             $colMap['y'] = $nextC;
+        } elseif ($koordinatSatuKolom) {
+            // Format satu kolom berisi "X: ... Y: ..." sekaligus.
+            $colMap['y'] = $colMap['x'];
         }
+    }
+
+    // Validasi seluruh kolom baku template.
+    $missing = [];
+    foreach (template_kolom_usulan() as $key => $label) {
+        if ($key === 'x') {
+            if (!isset($colMap['x'])) {
+                $missing[] = $label . ' (kolom X dan Y)';
+            } elseif (!isset($colMap['y'])) {
+                $missing[] = $label . ' — kolom Y tidak ditemukan (template memakai dua kolom X dan Y)';
+            }
+        } elseif (!isset($colMap[$key])) {
+            $missing[] = $label;
+        }
+    }
+
+    if (!empty($missing)) {
+        $terdeteksi = template_header_list($headerCells);
+        throw new RuntimeException(
+            "Format kolom Excel usulan TIDAK SESUAI template resmi.\n" .
+            "Sheet \"" . $ws->getTitle() . "\" — header terbaca pada baris {$headerRow}.\n" .
+            "Kolom yang tidak ditemukan / tidak sesuai:\n- " . implode("\n- ", $missing) . "\n" .
+            "Header yang terbaca: " . ($terdeteksi !== '' ? $terdeteksi : '(tidak ada teks header)') . ".\n" .
+            "Samakan nama kolom dengan template resmi (NO, NIK, NAMA, JENIS KELAMIN, RT, RW, DESA, KECAMATAN, POLA TANAM, PETAK, LUAS LAHAN, NO. PKS/SK, TITIK KOORDINAT LAHAN), lalu unggah ulang. [UNDUH_TEMPLATE]"
+        );
     }
 
     // Cek apakah baris tepat setelah header merupakan sub-header (misal X dan Y, atau Longitude dan Latitude)
@@ -105,24 +139,8 @@ function parse_excel_usulan(string $path): array {
         }
     }
 
-    // Validasi kelengkapan kolom wajib
-    $missing = [];
-    if (!isset($colMap['nik'])) $missing[] = 'NIK';
-    if (!isset($colMap['nama'])) $missing[] = 'NAMA';
-    if (!isset($colMap['luas'])) $missing[] = 'LUAS LAHAN (Ha)';
-    if (!isset($colMap['x']) && !isset($colMap['y'])) $missing[] = 'TITIK KOORDINAT LAHAN (X & Y)';
-
-    if (!empty($missing)) {
-        throw new RuntimeException(
-            "Format kolom Excel tidak sesuai standar usulan pupuk.\n" .
-            "Kolom wajib berikut tidak ditemukan pada baris header: " . implode(', ', $missing) . ".\n" .
-            "Pastikan format tabel Excel Anda mengikuti standar resmi (NO, NIK, NAMA, JENIS KELAMIN, RT, RW, DESA, KECAMATAN, POLA TANAM, PETAK, LUAS LAHAN, NO. PKS/SK, TITIK KOORDINAT LAHAN). [UNDUH_TEMPLATE]"
-        );
-    }
-
-    // Fallback posisi default untuk kolom pendukung
-    $colMap += ['no'=>1,'nik'=>2,'nama'=>3,'jk'=>4,'rt'=>5,'rw'=>6,'desa'=>7,'kecamatan'=>8,
-                'pola'=>9,'petak'=>10,'luas'=>11,'no_sk'=>12,'x'=>13,'y'=>14];
+    // Semua kolom template sudah tervalidasi di atas. Tidak ada fallback posisi
+    // default agar file yang tidak sesuai template tidak dibaca secara keliru.
 
     // Jangan gunakan kolom no jika sama dengan kolom nik
     if (isset($colMap['no'], $colMap['nik']) && $colMap['no'] === $colMap['nik']) {
@@ -167,9 +185,32 @@ function parse_excel_usulan(string $path): array {
         $coord = parse_dan_konversi_koordinat($xRaw, $yRaw);
         $x = $coord['x'];
         $y = $coord['y'];
-        if ($xRaw !== '' && $x === null) $errors[] = "Baris $r: koordinat X tidak terbaca ('$xRaw').";
-        if ($yRaw !== '' && $y === null) $errors[] = "Baris $r: koordinat Y tidak terbaca ('$yRaw').";
-        $luas = str_replace(',', '.', (string)$get($colMap['luas']));
+
+        $nikNorm = norm_nik($nik);
+        if ($nikNorm === '') {
+            $errors[] = "Baris $r: NIK kosong.";
+        } elseif (strlen($nikNorm) !== 16) {
+            $errors[] = "Baris $r: NIK '{$nik}' bukan 16 digit (terbaca " . strlen($nikNorm) . " digit).";
+        }
+        if (trim($nama) === '') {
+            $errors[] = "Baris $r: NAMA kosong.";
+        }
+
+        $luasRaw = (string)$get($colMap['luas']);
+        $luas = str_replace(',', '.', $luasRaw);
+        if ($luasRaw === '') {
+            $errors[] = "Baris $r: LUAS LAHAN kosong.";
+        } elseif (!is_numeric($luas)) {
+            $errors[] = "Baris $r: LUAS LAHAN '{$luasRaw}' bukan angka.";
+        } elseif ((float)$luas <= 0) {
+            $errors[] = "Baris $r: LUAS LAHAN harus lebih dari 0 (terbaca '{$luasRaw}').";
+        }
+
+        if ($xRaw === '' || $yRaw === '') {
+            $errors[] = "Baris $r: TITIK KOORDINAT LAHAN belum lengkap (X atau Y kosong).";
+        } elseif ($x === null || $y === null) {
+            $errors[] = "Baris $r: koordinat X/Y tidak terbaca (X='{$xRaw}', Y='{$yRaw}').";
+        }
         
         $rawNo = isset($colMap['no']) ? $get($colMap['no']) : '';
         $cleanNo = preg_replace('/\D/', '', (string)$rawNo);
@@ -208,10 +249,17 @@ function parse_excel_usulan(string $path): array {
         );
     }
 
+    $errorsTotal = count($errors);
+    if ($errorsTotal > 100) {
+        $errors = array_slice($errors, 0, 100);
+    }
+
     return [
         'header_row' => $headerRow,
+        'template_ok' => true,
         'rows' => $rows,
         'errors' => $errors,
+        'errors_total' => $errorsTotal,
         'format_koordinat' => $formatKoordinat,
         'utm_count' => $utmCount
     ];
