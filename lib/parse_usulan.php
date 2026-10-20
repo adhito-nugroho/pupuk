@@ -177,16 +177,52 @@ function parse_excel_usulan(string $path): array {
             if ($ahead) break;
             continue;
         }
+        $nikNorm = norm_nik($nik);
+        $namaTrim = trim($nama);
+
+        // Baris lanjutan: NIK & NAMA kosong, tetapi berisi koordinat.
+        // Semua titik pada baris seperti ini milik petani pada baris data terakhir.
+        if ($nikNorm === '' && $namaTrim === '') {
+            if ($xRaw === '' && $yRaw === '') continue;
+
+            if (empty($rows)) {
+                $errors[] = "Baris $r: titik koordinat tambahan ditemukan sebelum data petani pertama — diabaikan.";
+                continue;
+            }
+            if ($xRaw === '' || $yRaw === '') {
+                $errors[] = "Baris $r: titik koordinat tambahan belum lengkap (X atau Y kosong) — diabaikan.";
+                continue;
+            }
+
+            $coordTambahan = parse_dan_konversi_koordinat($xRaw, $yRaw);
+            if ($coordTambahan['x'] === null || $coordTambahan['y'] === null) {
+                $errors[] = "Baris $r: koordinat titik tambahan tidak terbaca (X='{$xRaw}', Y='{$yRaw}') — diabaikan.";
+                continue;
+            }
+
+            $lastIdx = count($rows) - 1;
+            if (!isset($rows[$lastIdx]['titik_tambahan'])) {
+                $rows[$lastIdx]['titik_tambahan'] = [];
+            }
+            $rows[$lastIdx]['titik_tambahan'][] = [
+                'x_raw' => $xRaw,
+                'y_raw' => $yRaw,
+                'x' => $coordTambahan['x'],
+                'y' => $coordTambahan['y'],
+                'tipe_koordinat' => $coordTambahan['tipe'] ?? 'Geografis (WGS84)',
+                'is_utm' => $coordTambahan['is_utm'] ?? false,
+            ];
+            continue;
+        }
+
         // Baris tanda tangan/footer (cth. "Mengetahui, Kepala Desa ...") tidak punya
         // NIK digit maupun nama — lewati agar tidak masuk sebagai data petani.
-        if (strlen(norm_nik($nik)) < 10 && mb_strlen(norm_nama($nama), 'UTF-8') < 3) {
+        if (strlen($nikNorm) < 10 && mb_strlen(norm_nama($nama), 'UTF-8') < 3) {
             continue;
         }
         $coord = parse_dan_konversi_koordinat($xRaw, $yRaw);
         $x = $coord['x'];
         $y = $coord['y'];
-
-        $nikNorm = norm_nik($nik);
         if ($nikNorm === '') {
             $errors[] = "Baris $r: NIK kosong.";
         } elseif (strlen($nikNorm) !== 16) {
@@ -221,10 +257,16 @@ function parse_excel_usulan(string $path): array {
             $noVal = count($rows) + 1;
         }
 
+        $jkRaw = (string)$get($colMap['jk']);
+        $jk = norm_jk($jkRaw);
+        if ($jkRaw !== '' && $jk === null) {
+            $errors[] = "Baris $r: JENIS KELAMIN '{$jkRaw}' tidak dikenali (gunakan L/P).";
+        }
+
         $rows[] = [
             'no' => $noVal,
             'nik' => $nik, 'nama' => $nama,
-            'jk' => mb_strtoupper((string)$get($colMap['jk']), 'UTF-8'),
+            'jk' => $jk ?? '',
             'rt' => (string)$get($colMap['rt']), 'rw' => (string)$get($colMap['rw']),
             'desa' => (string)$get($colMap['desa']), 'kecamatan' => (string)$get($colMap['kecamatan']),
             'pola' => (string)$get($colMap['pola']), 'petak' => (string)$get($colMap['petak']),
@@ -233,12 +275,19 @@ function parse_excel_usulan(string $path): array {
             'x_raw' => $xRaw, 'y_raw' => $yRaw, 'x' => $x, 'y' => $y,
             'tipe_koordinat' => $coord['tipe'] ?? 'Geografis (WGS84)',
             'is_utm' => $coord['is_utm'] ?? false,
+            'titik_tambahan' => [],
         ];
     }
     
     $utmCount = 0;
+    $totalTitik = 0;
     foreach ($rows as $rw) {
         if (!empty($rw['is_utm'])) $utmCount++;
+        $totalTitik++;
+        foreach (($rw['titik_tambahan'] ?? []) as $titik) {
+            if (!empty($titik['is_utm'])) $utmCount++;
+            $totalTitik++;
+        }
     }
     $formatKoordinat = ($utmCount > 0) ? 'UTM Zona 49S (Otomatis Dikonversi ke Geografis WGS84)' : 'Geografis (WGS84)';
 
@@ -261,6 +310,7 @@ function parse_excel_usulan(string $path): array {
         'errors' => $errors,
         'errors_total' => $errorsTotal,
         'format_koordinat' => $formatKoordinat,
-        'utm_count' => $utmCount
+        'utm_count' => $utmCount,
+        'total_titik' => $totalTitik
     ];
 }

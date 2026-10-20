@@ -106,11 +106,13 @@ function proses_db_simpan(string $namaKth, int $tahun, string $namaKph, string $
             $noVal = (isset($r['no']) && is_numeric($r['no']) && (int)$r['no'] > 0 && (int)$r['no'] <= 2147483647)
                 ? (int)$r['no']
                 : ($idx + 1);
+            $jkVal = norm_jk((string)($r['jk'] ?? ''));
             $insU->execute([
-                $kthId, $noVal, $r['nik'], $r['nama'], $r['jk'] ?: null, $r['rt'] ?: null, $r['rw'] ?: null,
+                $kthId, $noVal, $r['nik'], $r['nama'], $jkVal, $r['rt'] ?: null, $r['rw'] ?: null,
                 $r['desa'] ?: null, $r['kecamatan'] ?: null, $r['pola'] ?: null, $r['petak'] ?: null,
                 $r['luas'], $r['no_sk'] ?: null, $r['x_raw'] ?: null, $r['y_raw'] ?: null, $r['x'], $r['y']
             ]);
+            simpan_titik_usulan($pdo, (int)$pdo->lastInsertId(), $r);
         }
         $_SESSION['sk_parse'][$kthId] = [
             'rows' => $skParsed['rows'],
@@ -134,7 +136,8 @@ function proses_db_simpan(string $namaKth, int $tahun, string $namaKph, string $
             ->execute([$kthId, $namaLayer, json_encode(['features' => $shp['features']], JSON_UNESCAPED_UNICODE), $shp['total_ring'], basename($dstZip)]);
         $pdo->commit();
         $infoKoord = !empty($ex['format_koordinat']) ? ' (' . $ex['format_koordinat'] . ')' : '';
-        $pesan = 'Upload berhasil: ' . count($ex['rows']) . ' baris usulan pupuk' . $infoKoord . ', ' . count($_SESSION['sk_parse'][$kthId]['rows']) . ' baris daftar anggota SK' . ($sheetSk ? " (sheet: {$sheetSk})" : '') . ', ' . $shp['total_fitur'] . ' fitur poligon (' . $shp['total_ring'] . ' ring). Silakan tinjau dan konfirmasi anggota SK.';
+        $jumlahTitik = (int)($ex['total_titik'] ?? count($ex['rows']));
+        $pesan = 'Upload berhasil: ' . count($ex['rows']) . ' petani / ' . $jumlahTitik . ' titik usulan pupuk' . $infoKoord . ', ' . count($_SESSION['sk_parse'][$kthId]['rows']) . ' baris daftar anggota SK' . ($sheetSk ? " (sheet: {$sheetSk})" : '') . ', ' . $shp['total_fitur'] . ' fitur poligon (' . $shp['total_ring'] . ' ring). Silakan tinjau dan konfirmasi anggota SK.';
         if ($skParsed['perlu_dicek_count'] > 0) {
             $pesan .= " (Perhatian: ada {$skParsed['perlu_dicek_count']} baris yang ditandai kuning dan perlu dicek manual).";
         }

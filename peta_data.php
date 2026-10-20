@@ -50,8 +50,9 @@ if ($pr) {
 // ─── 2. Titik petani + status verifikasi ────────────────────────────────────
 $q = $pdo->prepare(
     'SELECT u.id, u.no_urut, u.nama, u.nik, u.desa, u.kecamatan,
-            u.koordinat_x, u.koordinat_y,
-            h.status_sk, h.status_koordinat, h.catatan, h.kemiripan_nama, h.nama_mirip_sk
+            u.koordinat_x_raw, u.koordinat_y_raw, u.koordinat_x, u.koordinat_y,
+            h.status_sk, h.status_koordinat, h.catatan, h.kemiripan_nama, h.nama_mirip_sk,
+            h.koordinat_koreksi_x, h.koordinat_koreksi_y
      FROM usulan_pupuk u
      LEFT JOIN hasil_verifikasi h ON (h.usulan_id = u.id AND h.versi_ke = u.versi_ke)
      WHERE u.kth_id = ? AND u.versi_ke = ?
@@ -60,43 +61,108 @@ $q = $pdo->prepare(
 $q->execute([$kthId, $versiAktif]);
 $rows = $q->fetchAll(PDO::FETCH_ASSOC);
 
+$titikByUsulan = ambil_titik_usulan($pdo, $kthId, $versiAktif);
+
 $features = [];
 foreach ($rows as $r) {
-    $lng = $r['koordinat_x'] !== null ? (float)$r['koordinat_x'] : null;
-    $lat = $r['koordinat_y'] !== null ? (float)$r['koordinat_y'] : null;
-
+    $usulanId = (int)$r['id'];
     $statusSK    = (string)($r['status_sk']         ?? 'Belum Sesuai SK PS');
     $statusKoord = (string)($r['status_koordinat']  ?? 'Luar Peta PS');
     $sesuaiSK    = $statusSK   === 'Sesuai SK PS';
-    $dalamPeta   = $statusKoord === 'Dalam Peta PS';
 
-    if ($sesuaiSK && $dalamPeta)        { $warna = 'hijau';  $ikon = 'ok'; }
-    elseif (!$sesuaiSK && !$dalamPeta)  { $warna = 'merah';  $ikon = 'dua'; }
-    elseif (!$sesuaiSK)                 { $warna = 'merah';  $ikon = 'sk'; }
-    else                                { $warna = 'oranye'; $ikon = 'koord'; }
+    $korX = $r['koordinat_koreksi_x'] !== null ? (float)$r['koordinat_koreksi_x'] : null;
+    $korY = $r['koordinat_koreksi_y'] !== null ? (float)$r['koordinat_koreksi_y'] : null;
 
-    $features[] = [
-        'type' => 'Feature',
-        'geometry' => ($lng !== null && $lat !== null)
-            ? ['type' => 'Point', 'coordinates' => [$lng, $lat]]
-            : null,
-        'properties' => [
-            'id'           => (int)$r['id'],
-            'no'           => $r['no_urut'],
-            'nama'         => $r['nama'],
-            'nik'          => $r['nik'],
-            'desa'         => $r['desa'],
-            'kecamatan'    => $r['kecamatan'],
-            'status_sk'    => $statusSK,
-            'status_koord' => $statusKoord,
-            'catatan'      => $r['catatan'],
-            'nama_mirip'   => $r['nama_mirip_sk'],
-            'kemiripan'    => $r['kemiripan_nama'],
-            'warna'        => $warna,
-            'ikon'         => $ikon,
-            'no_koordinat' => ($lng === null || $lat === null),
-        ],
-    ];
+    $titikPetani = $titikByUsulan[$usulanId] ?? [];
+    if (empty($titikPetani)) {
+        $titikPetani = [[
+            'id' => null,
+            'urutan' => 1,
+            'x_raw' => $r['koordinat_x_raw'] ?? null,
+            'y_raw' => $r['koordinat_y_raw'] ?? null,
+            'x' => $r['koordinat_x'],
+            'y' => $r['koordinat_y'],
+            'status_koordinat' => $statusKoord,
+        ]];
+    }
+    $jumlahTitik = count($titikPetani);
+    $adaTitikValid = false;
+
+    foreach ($titikPetani as $t) {
+        $urutan = (int)($t['urutan'] ?? 1);
+        $utama = $urutan === 1;
+        $lng = $t['x'] !== null ? (float)$t['x'] : null;
+        $lat = $t['y'] !== null ? (float)$t['y'] : null;
+        if ($utama && $korX !== null && $korY !== null) {
+            $lng = $korX;
+            $lat = $korY;
+        }
+        if ($lng === null || $lat === null) continue;
+
+        $adaTitikValid = true;
+        $statusTitik = (string)($t['status_koordinat'] ?? '');
+        if ($statusTitik === '') $statusTitik = $utama ? $statusKoord : 'Luar Peta PS';
+        $dalamTitik = $statusTitik === 'Dalam Peta PS';
+
+        if ($sesuaiSK && $dalamTitik)        { $warna = 'hijau';  $ikon = 'ok'; }
+        elseif (!$sesuaiSK && !$dalamTitik)  { $warna = 'merah';  $ikon = 'dua'; }
+        elseif (!$sesuaiSK)                 { $warna = 'merah';  $ikon = 'sk'; }
+        else                                { $warna = 'oranye'; $ikon = 'koord'; }
+
+        $features[] = [
+            'type' => 'Feature',
+            'geometry' => ['type' => 'Point', 'coordinates' => [$lng, $lat]],
+            'properties' => [
+                'id'             => $usulanId,
+                'titik_id'       => isset($t['id']) ? (int)$t['id'] : null,
+                'urutan'         => $urutan,
+                'utama'          => $utama,
+                'jumlah_titik'   => $jumlahTitik,
+                'no'             => $r['no_urut'],
+                'nama'           => $r['nama'],
+                'nik'            => $r['nik'],
+                'desa'           => $r['desa'],
+                'kecamatan'      => $r['kecamatan'],
+                'status_sk'      => $statusSK,
+                'status_koord'   => $statusTitik,
+                'status_petani'  => $statusKoord,
+                'catatan'        => $r['catatan'],
+                'nama_mirip'     => $r['nama_mirip_sk'],
+                'kemiripan'      => $r['kemiripan_nama'],
+                'warna'          => $warna,
+                'ikon'           => $ikon,
+                'no_koordinat'   => false,
+            ],
+        ];
+    }
+
+    if (!$adaTitikValid) {
+        $features[] = [
+            'type' => 'Feature',
+            'geometry' => null,
+            'properties' => [
+                'id'             => $usulanId,
+                'titik_id'       => null,
+                'urutan'         => 1,
+                'utama'          => true,
+                'jumlah_titik'   => $jumlahTitik,
+                'no'             => $r['no_urut'],
+                'nama'           => $r['nama'],
+                'nik'            => $r['nik'],
+                'desa'           => $r['desa'],
+                'kecamatan'      => $r['kecamatan'],
+                'status_sk'      => $statusSK,
+                'status_koord'   => $statusKoord,
+                'status_petani'  => $statusKoord,
+                'catatan'        => $r['catatan'],
+                'nama_mirip'     => $r['nama_mirip_sk'],
+                'kemiripan'      => $r['kemiripan_nama'],
+                'warna'          => 'merah',
+                'ikon'           => 'dua',
+                'no_koordinat'   => true,
+            ],
+        ];
+    }
 }
 
 echo json_encode([

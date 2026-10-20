@@ -30,6 +30,15 @@ function verifikasi_satu_kth(PDO $pdo, int $kthId, int $versiKe = 0): array {
     $us->execute([$kthId, $versiKe]);
     $usulan = $us->fetchAll();
 
+    // Seluruh titik per petani (titik utama + titik tambahan).
+    $titikByUsulan = ambil_titik_usulan($pdo, $kthId, $versiKe);
+    $updTitik = null;
+    try {
+        $updTitik = $pdo->prepare('UPDATE usulan_titik SET status_koordinat = ? WHERE id = ?');
+    } catch (Throwable $eTitik) {
+        $updTitik = null;
+    }
+
     // Ambil data lama agar koreksi manual + catatan verifikator tidak hilang
     // saat hitung ulang (sebelumnya DELETE menghapus semuanya).
     $lama = [];
@@ -68,35 +77,93 @@ function verifikasi_satu_kth(PDO $pdo, int $kthId, int $versiKe = 0): array {
             }
         }
 
-        $x = $u['koordinat_x'] !== null ? (float)$u['koordinat_x'] : null;
-        $y = $u['koordinat_y'] !== null ? (float)$u['koordinat_y'] : null;
-        $koordFormatErr = cek_format_koordinat($u['koordinat_x_raw'] ?? null, $u['koordinat_y_raw'] ?? null, $x, $y);
-        if ($koordFormatErr) $catatanPieces[] = $koordFormatErr;
         // Koordinat koreksi manual (jika ada) dipakai sebagai posisi efektif
-        // untuk uji spasial — koordinat asli di usulan_pupuk tetap utuh.
+        // untuk titik utama — koordinat asli di usulan_pupuk tetap utuh.
         $rowLama = $lama[(int)$u['id']] ?? null;
         $korX = $rowLama && $rowLama['koordinat_koreksi_x'] !== null ? (float)$rowLama['koordinat_koreksi_x'] : null;
         $korY = $rowLama && $rowLama['koordinat_koreksi_y'] !== null ? (float)$rowLama['koordinat_koreksi_y'] : null;
-        $efX = $korX ?? $x;
-        $efY = $korY ?? $y;
-        if ($efX === null || $efY === null) {
-            $statusKoord = 'Luar Peta PS';
-            $cLuar++;
-            if ($koordFormatErr === null) {
-                $catatanPieces[] = 'Titik koordinat tidak terbaca — dianggap di luar peta.';
+
+        $titikPetani = $titikByUsulan[(int)$u['id']] ?? [];
+        if (empty($titikPetani)) {
+            // Kompatibilitas data lama yang belum memiliki baris usulan_titik.
+            $titikPetani = [[
+                'id' => null,
+                'urutan' => 1,
+                'x_raw' => $u['koordinat_x_raw'] ?? null,
+                'y_raw' => $u['koordinat_y_raw'] ?? null,
+                'x' => $u['koordinat_x'] ?? null,
+                'y' => $u['koordinat_y'] ?? null,
+            ]];
+        }
+
+        $statusTitik = [];
+        $titikLuar = [];
+        $titikKosong = [];
+        $adaFormatTitik = false;
+        $koordFormatErr = null;
+
+        foreach ($titikPetani as $t) {
+            $urutanTitik = (int)($t['urutan'] ?? 1);
+            $isUtama = $urutanTitik === 1;
+            $tX = $t['x'] !== null ? (float)$t['x'] : null;
+            $tY = $t['y'] !== null ? (float)$t['y'] : null;
+
+            $formatErr = cek_format_koordinat($t['x_raw'] ?? null, $t['y_raw'] ?? null, $tX, $tY);
+            if ($formatErr !== null) {
+                $adaFormatTitik = true;
+                if ($isUtama) {
+                    $koordFormatErr = $formatErr;
+                } else {
+                    $catatanPieces[] = 'Titik ke-' . $urutanTitik . ': ' . $formatErr;
+                }
             }
-        } elseif (!$rings) {
-            $statusKoord = 'Luar Peta PS';
-            $cLuar++;
-            $catatanPieces[] = 'Belum ada data poligon PS — dianggap di luar peta.';
-        } else {
-            // Konvensi: X=lng, Y=lat (pakai posisi efektif = koreksi bila ada)
-            $diDalam = point_in_geometry($efX, $efY, $rings);
-            $statusKoord = $diDalam ? 'Dalam Peta PS' : 'Luar Peta PS';
-            if ($diDalam) {
-                $cDalam++;
+
+            $efX = $isUtama ? ($korX ?? $tX) : $tX;
+            $efY = $isUtama ? ($korY ?? $tY) : $tY;
+
+            if ($efX === null || $efY === null) {
+                $statusTitikSatu = 'Luar Peta PS';
+                $titikKosong[] = $urutanTitik;
+            } elseif (!$rings) {
+                $statusTitikSatu = 'Luar Peta PS';
             } else {
-                $cLuar++;
+                $diDalam = point_in_geometry($efX, $efY, $rings);
+                $statusTitikSatu = $diDalam ? 'Dalam Peta PS' : 'Luar Peta PS';
+                if (!$diDalam) $titikLuar[] = $urutanTitik;
+            }
+            $statusTitik[] = $statusTitikSatu;
+
+            if ($updTitik && !empty($t['id'])) {
+                $updTitik->execute([$statusTitikSatu, (int)$t['id']]);
+            }
+        }
+
+        $statusKoord = (!in_array('Luar Peta PS', $statusTitik, true))
+            ? 'Dalam Peta PS'
+            : 'Luar Peta PS';
+        if ($statusKoord === 'Dalam Peta PS') {
+            $cDalam++;
+        } else {
+            $cLuar++;
+        }
+
+        if ($koordFormatErr) $catatanPieces[] = $koordFormatErr;
+
+        if (!empty($titikKosong)) {
+            $labelTitik = count($titikPetani) > 1
+                ? 'Titik ke-' . implode(', ke-', $titikKosong)
+                : 'Titik koordinat';
+            if (!$adaFormatTitik) {
+                $catatanPieces[] = $labelTitik . ' tidak terbaca — dianggap di luar peta.';
+            }
+        }
+
+        if (!$rings) {
+            $catatanPieces[] = 'Belum ada data poligon PS — dianggap di luar peta.';
+        } elseif (!empty($titikLuar)) {
+            if (count($titikPetani) > 1) {
+                $catatanPieces[] = 'Titik ke-' . implode(', ke-', $titikLuar) . ' berada di luar areal PS.';
+            } else {
                 $catatanPieces[] = 'Titik koordinat berada di luar areal PS.';
             }
         }

@@ -22,6 +22,8 @@ $q = $pdo->prepare('SELECT u.*, h.status_sk, h.status_koordinat, h.catatan, h.id
 $q->execute([$kthId, $versiAktif]);
 $rows = $q->fetchAll();
 
+$titikByUsulan = ambil_titik_usulan($pdo, $kthId, $versiAktif);
+
 $hitung = ['total' => count($rows), 'sesuai' => 0, 'tidak' => 0, 'dalam' => 0, 'luar' => 0, 'lebih_luas' => 0, 'format' => 0, 'total_luas' => 0.0];
 foreach ($rows as $idx => $r) {
     if (($r['status_sk'] ?? '') === 'Sesuai SK PS') $hitung['sesuai']++; else $hitung['tidak']++;
@@ -30,11 +32,32 @@ foreach ($rows as $idx => $r) {
     $hitung['total_luas'] += $luasVal;
     if ($luasVal > 2.0) $hitung['lebih_luas']++;
 
-    $formatIssues = array_values(array_filter([
-        cek_format_nik((string)($r['nik'] ?? '')),
-        cek_format_koordinat($r['koordinat_x_raw'] ?? null, $r['koordinat_y_raw'] ?? null, $r['koordinat_x'] ?? null, $r['koordinat_y'] ?? null),
-    ]));
+    $titikPetani = $titikByUsulan[(int)$r['id']] ?? [];
+    $jumlahTitik = 0;
+    foreach ($titikPetani as $t) {
+        if ($t['x'] !== null && $t['y'] !== null) $jumlahTitik++;
+    }
+
+    $formatIssues = [];
+    $nikErr = cek_format_nik((string)($r['nik'] ?? ''));
+    if ($nikErr) $formatIssues[] = $nikErr;
+
+    $koordIssues = [];
+    $primErr = cek_format_koordinat($r['koordinat_x_raw'] ?? null, $r['koordinat_y_raw'] ?? null, $r['koordinat_x'] ?? null, $r['koordinat_y'] ?? null);
+    if ($primErr) $koordIssues[] = $primErr;
+    foreach ($titikPetani as $t) {
+        $urutanTitik = (int)($t['urutan'] ?? 1);
+        if ($urutanTitik === 1) continue;
+        $err = cek_format_koordinat($t['x_raw'] ?? null, $t['y_raw'] ?? null, $t['x'] ?? null, $t['y'] ?? null);
+        if ($err) $koordIssues[] = 'Titik ke-' . $urutanTitik . ': ' . $err;
+    }
+    if (!empty($koordIssues)) $formatIssues[] = implode(' ', $koordIssues);
+
+    if ($jumlahTitik === 0 && $r['koordinat_x'] !== null && $r['koordinat_y'] !== null) {
+        $jumlahTitik = 1;
+    }
     $rows[$idx]['_format_issues'] = $formatIssues;
+    $rows[$idx]['_jumlah_titik'] = $jumlahTitik;
     if (!empty($formatIssues)) $hitung['format']++;
 }
 $pctSK = $hitung['total'] > 0 ? round($hitung['sesuai'] / $hitung['total'] * 100) : 0;
@@ -394,6 +417,9 @@ echo '<style>
                 📍 Koordinat asal: <?= e($r['koordinat_x_raw'] ?? '') ?>, <?= e($r['koordinat_y_raw'] ?? '') ?>
               </div>
             <?php endif; ?>
+            <?php if (($r['_jumlah_titik'] ?? 0) > 1): ?>
+              <div class="text-[10px] font-semibold text-forest-700 mt-0.5"><?= (int)$r['_jumlah_titik'] ?> titik koordinat</div>
+            <?php endif; ?>
             <?php if ($koordIssue !== null): ?>
               <div class="text-[9px] text-audit-revisi font-semibold mt-0.5 leading-tight" title="<?= e($koordIssue) ?>">Format titik koordinat tidak valid</div>
             <?php endif; ?>
@@ -591,6 +617,12 @@ window.catatanVerifikator = function (hasilId, nilaiAwal) {
 
   const cluster = L.markerClusterGroup({ disableClusteringAtZoom: 16, maxClusterRadius: 50 });
   const markerMap = {};
+
+  function markerUtama(uid) {
+    const arr = markerMap[uid];
+    if (Array.isArray(arr)) return arr[0] || null;
+    return arr || null;
+  }
   let popupSeq = 0;
 
   fetch(`peta_data.php?kth_id=${KTHID}&v=${VERSI}`)
@@ -613,11 +645,14 @@ window.catatanVerifikator = function (hasilId, nilaiAwal) {
         const [lng, lat] = f.geometry.coordinates;
         const bSK = p.status_sk === 'Sesuai SK PS' ? badgeHtml('Sesuai SK PS','hijau') : badgeHtml('Belum Sesuai SK PS','merah');
         const bKoord = p.status_koord === 'Dalam Peta PS' ? badgeHtml('Dalam Peta PS','hijau') : badgeHtml('Luar Peta PS','oranye');
+        const infoTitik = p.jumlah_titik > 1
+          ? `<div class="text-[10px] font-semibold text-forest-900 bg-forest-50 border border-forest-100 px-1.5 py-0.5 inline-block mb-1">Titik ${p.urutan} dari ${p.jumlah_titik}${p.utama ? ' (utama)' : ''}</div>` : '';
         const mirip = p.nama_mirip && p.kemiripan
           ? `<div class="mt-1 text-ink-muted text-xs">Kemiripan nama SK (${parseFloat(p.kemiripan).toFixed(1)}%): <b>${p.nama_mirip}</b></div>` : '';
         const catatan = p.catatan ? `<div class="mt-1 text-ink italic text-xs border-l-2 border-kadaster-border pl-2 py-0.5 bg-kadaster-light">${p.catatan}</div>` : '';
         const popup = `<div class="p-1">
             <div class="font-bold text-ink text-sm mb-1">${p.no ? '#'+p.no+' — ' : ''}${p.nama}</div>
+            ${infoTitik}
             <div class="text-ink-muted font-mono text-[11px] mb-1">NIK: ${p.nik}</div>
             <div class="text-ink-muted text-xs mb-1">${[p.desa, p.kecamatan].filter(Boolean).join(', ')}</div>
             <div class="flex gap-1 flex-wrap my-1.5">${bSK} ${bKoord}</div>
@@ -627,9 +662,11 @@ window.catatanVerifikator = function (hasilId, nilaiAwal) {
 
         const marker = L.marker([lat, lng], { icon: buatIkon(p.warna, p.no ? String(p.no) : '?') })
           .bindPopup(popup, { maxWidth: 300 });
+        marker.titikInfo = p;
         marker.on('click', () => tandaiBaris(p.id, false));
         cluster.addLayer(marker);
-        markerMap[p.id] = marker;
+        if (!markerMap[p.id]) markerMap[p.id] = [];
+        markerMap[p.id].push(marker);
         bounds.push(L.latLng(lat, lng));
       });
 
@@ -656,8 +693,9 @@ window.catatanVerifikator = function (hasilId, nilaiAwal) {
     });
 
   window.zoomKePetani = function(uid) {
-    const marker = markerMap[uid];
-    if (!marker) { alert('Petani ini tidak memiliki data koordinat lintang/bujur.'); return; }
+    const markers = markerMap[uid] || [];
+    if (!markers.length) { alert('Petani ini tidak memiliki data koordinat lintang/bujur.'); return; }
+    const marker = markers[0];
 
     const seq = ++popupSeq;
     tandaiBaris(uid, false);
@@ -673,7 +711,11 @@ window.catatanVerifikator = function (hasilId, nilaiAwal) {
         .openOn(peta);
     };
 
-    peta.flyTo(marker.getLatLng(), 17, { duration: 0.8 });
+    if (markers.length > 1) {
+      peta.flyToBounds(L.featureGroup(markers).getBounds(), { padding: [45, 45], maxZoom: 18, duration: 0.8 });
+    } else {
+      peta.flyTo(marker.getLatLng(), 17, { duration: 0.8 });
+    }
     peta.once('moveend', () => window.setTimeout(bukaPopup, 120));
     window.setTimeout(bukaPopup, 1400);
 
@@ -726,7 +768,7 @@ window.catatanVerifikator = function (hasilId, nilaiAwal) {
   /** Aktifkan panel koreksi untuk petani tertentu */
   window.aktifkanKoreksi = function(uid) {
     if (koreksiAktif) batalKoreksi();
-    const marker = markerMap[uid];
+    const marker = markerUtama(uid);
 
     const baris = document.getElementById('baris-' + uid);
     const nama = baris ? baris.querySelector('td:nth-child(2)')?.textContent?.trim() : 'Petani #' + uid;
@@ -876,22 +918,24 @@ window.catatanVerifikator = function (hasilId, nilaiAwal) {
         // Update badge di baris tabel
         const baris = document.getElementById('baris-' + uid);
         if (baris) {
-          const tdKoord = baris.querySelector('td:nth-child(5)');
-          if (tdKoord) tdKoord.innerHTML = '<span class="badge-hijau">Dalam Peta PS</span>';
-          baris.dataset.ko = 'dalam';
+          const tdKoord = baris.querySelector('td:nth-child(6)');
+          if (tdKoord) tdKoord.innerHTML = j.status_koordinat === 'Dalam Peta PS'
+            ? '<span class="badge-hijau">Dalam Peta PS</span>'
+            : '<span class="badge-oranye">Luar Peta PS</span>';
+          baris.dataset.ko = j.status_koordinat === 'Dalam Peta PS' ? 'dalam' : 'luar';
           const btnK = document.getElementById('btn-koreksi-' + uid);
-          if (btnK) btnK.outerHTML = '<span class="text-[10px] text-audit-valid font-semibold">✓ OK</span>';
+          if (btnK && j.status_koordinat === 'Dalam Peta PS') btnK.outerHTML = '<span class="text-[10px] text-audit-valid font-semibold">OK</span>';
         }
         // Pindahkan marker asli ke posisi baru
         if (marker) {
           marker.setLatLng([lat, lng]);
-          marker.setIcon(buatIkon('hijau', koreksiAktif.uid ? String(koreksiAktif.uid) : '?'));
+          marker.setIcon(buatIkon(j.status_koordinat === 'Dalam Peta PS' ? 'hijau' : 'oranye', koreksiAktif.uid ? String(koreksiAktif.uid) : '?'));
         }
         batalKoreksi();
-        alert('✅ Koordinat baru berhasil disimpan.\n' + namaAsli + '\n📍 Lat ' + lat.toFixed(6) + ' · Lng ' + lng.toFixed(6) + '\n\nKoordinat asli di data usulan tidak berubah.');
+        alert(j.msg + '\n' + namaAsli + '\nLat ' + lat.toFixed(6) + ' - Lng ' + lng.toFixed(6) + '\n\nKoordinat asli di data usulan tidak berubah.');
       } else {
         btn.disabled = false;
-        btn.textContent = '✓ Simpan Koordinat Baru';
+        btn.textContent = 'Simpan Koordinat Baru';
         const pesan = document.getElementById('panel-koreksi-pesan');
         pesan.textContent = '⚠️ ' + j.msg;
         pesan.className = 'text-xs font-medium mb-3 text-audit-revisi';
@@ -900,7 +944,7 @@ window.catatanVerifikator = function (hasilId, nilaiAwal) {
     })
     .catch(() => {
       btn.disabled = false;
-      btn.textContent = '✓ Simpan Koordinat Baru';
+      btn.textContent = 'Simpan Koordinat Baru';
       alert('Gagal menghubungi server. Periksa koneksi.');
     });
   };

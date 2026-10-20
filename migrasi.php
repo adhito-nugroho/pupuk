@@ -118,6 +118,48 @@ tambah_kolom($pdo, 'laporan', 'versi_ke',
     "INT NOT NULL DEFAULT 1 COMMENT 'Nomor versi usulan yang dilaporkan'",
     $hasil, $ada_error);
 
+// Tabel titik usulan (satu petani dapat memiliki beberapa titik koordinat)
+try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS `usulan_titik` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `usulan_id` INT NOT NULL,
+            `urutan` INT NOT NULL DEFAULT 1,
+            `x_raw` VARCHAR(64) DEFAULT NULL,
+            `y_raw` VARCHAR(64) DEFAULT NULL,
+            `x` DOUBLE DEFAULT NULL,
+            `y` DOUBLE DEFAULT NULL,
+            `status_koordinat` VARCHAR(32) DEFAULT NULL,
+            `dibuat_pada` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY `uq_titik_usulan_urutan` (`usulan_id`, `urutan`),
+            KEY `idx_titik_usulan` (`usulan_id`),
+            CONSTRAINT `fk_titik_usulan` FOREIGN KEY (`usulan_id`) REFERENCES `usulan_pupuk` (`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    $hasil[] = ['status' => 'ok', 'msg' => "Tabel `usulan_titik` siap."];
+} catch (PDOException $e) {
+    $hasil[] = ['status' => 'error', 'msg' => "Gagal membuat tabel `usulan_titik`: " . $e->getMessage()];
+    $ada_error = true;
+}
+
+// Backfill titik utama untuk data usulan lama yang belum memiliki baris titik.
+try {
+    $nTitik = (int)$pdo->exec('
+        INSERT INTO usulan_titik (usulan_id, urutan, x_raw, y_raw, x, y, status_koordinat)
+        SELECT u.id, 1, u.koordinat_x_raw, u.koordinat_y_raw, u.koordinat_x, u.koordinat_y, h.status_koordinat
+        FROM usulan_pupuk u
+        LEFT JOIN hasil_verifikasi h ON h.usulan_id = u.id
+        WHERE NOT EXISTS (SELECT 1 FROM usulan_titik t WHERE t.usulan_id = u.id)
+    ');
+    if ($nTitik > 0) {
+        $hasil[] = ['status' => 'ok', 'msg' => "Berhasil mem-backfill {$nTitik} titik utama ke `usulan_titik`."];
+    } else {
+        $hasil[] = ['status' => 'skip', 'msg' => 'Titik utama `usulan_titik` sudah lengkap — dilewati.'];
+    }
+} catch (Throwable $eTitik) {
+    $hasil[] = ['status' => 'skip', 'msg' => 'Backfill titik utama dilewati: ' . $eTitik->getMessage()];
+}
+
 // Backfill versi_ke laporan lama mengikuti versi aktif KTH masing-masing
 try {
     $nLap = (int)$pdo->query('SELECT COUNT(*) FROM laporan WHERE versi_ke IS NULL OR versi_ke <= 0')->fetchColumn();

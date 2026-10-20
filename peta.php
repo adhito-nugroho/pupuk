@@ -25,8 +25,18 @@ $versiAktif = ambil_versi_terpilih($kth, $vParam);
 // maupun perhitungan spasial di peta_data.php.
 $qPetani = $pdo->prepare(
     'SELECT u.id, u.no_urut, u.nama, u.nik, u.petak, u.desa, u.kecamatan,
-            u.luas_lahan, u.koordinat_x, u.koordinat_y,
-            h.status_sk, h.status_koordinat, h.catatan, h.nama_mirip_sk, h.kemiripan_nama
+            u.luas_lahan,
+            COALESCE(h.koordinat_koreksi_x, u.koordinat_x) AS koordinat_x,
+            COALESCE(h.koordinat_koreksi_y, u.koordinat_y) AS koordinat_y,
+            h.status_sk, h.status_koordinat, h.catatan, h.nama_mirip_sk, h.kemiripan_nama,
+            (SELECT COUNT(*) FROM usulan_titik t
+              WHERE t.usulan_id = u.id AND t.x IS NOT NULL AND t.y IS NOT NULL) AS jumlah_titik,
+            (SELECT t.x FROM usulan_titik t
+              WHERE t.usulan_id = u.id AND t.x IS NOT NULL AND t.y IS NOT NULL
+              ORDER BY t.urutan LIMIT 1) AS titik_x,
+            (SELECT t.y FROM usulan_titik t
+              WHERE t.usulan_id = u.id AND t.x IS NOT NULL AND t.y IS NOT NULL
+              ORDER BY t.urutan LIMIT 1) AS titik_y
      FROM usulan_pupuk u
      LEFT JOIN hasil_verifikasi h ON (h.usulan_id = u.id AND h.versi_ke = u.versi_ke)
      WHERE u.kth_id = ? AND u.versi_ke = ?
@@ -37,6 +47,7 @@ $rowsPetani = $qPetani->fetchAll();
 
 $petaniPeta = [];
 $totalPetani = count($rowsPetani);
+$totalTitik = 0;
 $jumlahDalam = 0;
 $jumlahLuar = 0;
 $jumlahLuas = 0;
@@ -46,7 +57,13 @@ foreach ($rowsPetani as $r) {
     $id = (int)$r['id'];
     $lat = ($r['koordinat_y'] !== null && $r['koordinat_y'] !== '') ? (float)$r['koordinat_y'] : null;
     $lng = ($r['koordinat_x'] !== null && $r['koordinat_x'] !== '') ? (float)$r['koordinat_x'] : null;
+    if ($lat === null || $lng === null) {
+        $lat = ($r['titik_y'] !== null && $r['titik_y'] !== '') ? (float)$r['titik_y'] : null;
+        $lng = ($r['titik_x'] !== null && $r['titik_x'] !== '') ? (float)$r['titik_x'] : null;
+    }
     $punyaKoordinat = $lat !== null && $lng !== null;
+    $jumlahTitik = (int)($r['jumlah_titik'] ?? 0);
+    if ($jumlahTitik <= 0 && $punyaKoordinat) $jumlahTitik = 1;
     $luas = ($r['luas_lahan'] !== null && $r['luas_lahan'] !== '') ? (float)$r['luas_lahan'] : 0.0;
     $statusKoord = (string)($r['status_koordinat'] ?? 'Luar Peta PS');
     $statusSK = (string)($r['status_sk'] ?? 'Belum Sesuai SK PS');
@@ -67,6 +84,7 @@ foreach ($rowsPetani as $r) {
     if ($dalamPeta) $jumlahDalam++; else $jumlahLuar++;
     if ($luasLebih) $jumlahLuas++;
     if (!$punyaKoordinat) $jumlahTanpaKoordinat++;
+    $totalTitik += $jumlahTitik;
 
     $cari = mb_strtolower(implode(' ', array_filter([
         $noLabel,
@@ -97,6 +115,7 @@ foreach ($rowsPetani as $r) {
         'lng' => $lng,
         'lat_fmt' => $latFmt,
         'lng_fmt' => $lngFmt,
+        'jumlah_titik' => $jumlahTitik,
         'luas' => $luas,
         'luas_fmt' => $luasFmt,
         'luas_lebih' => $luasLebih,
@@ -392,7 +411,7 @@ layout_kth_subnav($kth, 'peta', $versiAktif, $daftarVersi);
           <h3 class="font-serif font-bold text-base text-ink leading-tight">Daftar Titik Koordinat &amp; Luasan</h3>
           <p class="text-[11px] text-ink-muted mt-0.5">Klik baris untuk melihat titik pada peta.</p>
         </div>
-        <span id="counter-petani" class="font-mono text-[10px] text-ink-faint whitespace-nowrap mt-1"><?= $totalPetani ?> titik</span>
+        <span id="counter-petani" class="font-mono text-[10px] text-ink-faint whitespace-nowrap mt-1"><?= $totalPetani ?> petani &middot; <?= $totalTitik ?> titik</span>
       </div>
 
       <div class="mt-3 flex items-center gap-1.5">
@@ -427,7 +446,7 @@ layout_kth_subnav($kth, 'peta', $versiAktif, $daftarVersi);
 
       <?php if ($jumlahTanpaKoordinat > 0): ?>
       <div class="mt-2 text-[10px] text-audit-warn">
-        <?= $jumlahTanpaKoordinat ?> titik belum memiliki koordinat.
+        <?= $jumlahTanpaKoordinat ?> petani belum memiliki koordinat.
       </div>
       <?php endif; ?>
     </div>
@@ -456,6 +475,9 @@ layout_kth_subnav($kth, 'peta', $versiAktif, $daftarVersi);
             <div class="font-mono text-sm font-bold text-forest-900 tabular-nums"><?= e($d['luas_fmt']) ?> <span class="font-sans text-[9px] font-medium text-ink-muted">Ha</span></div>
             <?php if ($d['luas_lebih']): ?>
             <span class="status-badge status-luas mt-0.5">Perlu Cek</span>
+            <?php endif; ?>
+            <?php if (($d['jumlah_titik'] ?? 1) > 1): ?>
+            <span class="status-badge status-abu mt-0.5"><?= (int)$d['jumlah_titik'] ?> titik</span>
             <?php endif; ?>
           </div>
         </div>
@@ -518,10 +540,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const pesanKosong = document.getElementById('pesan-kosong-petani');
   const resetHeader = document.getElementById('reset-filter-petani');
   const totalPetani = rowsById.size;
+  const totalTitik = <?= (int)$totalTitik ?>;
 
   let filterAktif = 'semua';
   let selectedId = null;
-  let selectedMarker = null;
+  let selectedMarkers = [];
   let popupSeq = 0;
   let cluster = null;
   let map = null;
@@ -588,8 +611,10 @@ document.addEventListener('DOMContentLoaded', () => {
   function refreshMarkers(q) {
     if (!cluster) return;
     cluster.clearLayers();
-    markersById.forEach((marker, id) => {
-      if (petaniCocok(PETANI[id], q)) cluster.addLayer(marker);
+    markersById.forEach((markers, id) => {
+      if (petaniCocok(PETANI[id], q)) {
+        markers.forEach(marker => cluster.addLayer(marker));
+      }
     });
   }
 
@@ -605,8 +630,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (counterPetani) {
       counterPetani.textContent = visible === totalPetani
-        ? totalPetani + ' titik'
-        : visible + ' / ' + totalPetani + ' titik';
+        ? totalPetani + ' petani · ' + totalTitik + ' titik'
+        : visible + ' / ' + totalPetani + ' petani';
     }
 
     if (daftarKosong) daftarKosong.classList.toggle('hidden', visible !== 0);
@@ -646,14 +671,14 @@ document.addEventListener('DOMContentLoaded', () => {
   if (cariInput) cariInput.addEventListener('input', filterPetani);
 
   function highlightMarker(id) {
-    if (selectedMarker) {
-      selectedMarker.setStyle({ weight: 2, color: '#FFFFFF' });
-    }
-    selectedMarker = markersById.get(id) || null;
-    if (selectedMarker) {
-      selectedMarker.setStyle({ weight: 3, color: '#F3C64F' });
-      selectedMarker.bringToFront();
-    }
+    selectedMarkers.forEach(marker => {
+      marker.setStyle({ weight: 2, color: '#FFFFFF' });
+    });
+    selectedMarkers = markersById.get(id) || [];
+    selectedMarkers.forEach(marker => {
+      marker.setStyle({ weight: 3, color: '#F3C64F' });
+      marker.bringToFront();
+    });
   }
 
   function setSelectedRow(id, scrollKeBaris) {
@@ -676,23 +701,29 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!dariDaftar) return;
 
     const d = PETANI[id];
-    const marker = markersById.get(id);
-    if (!d || !d.punya_koordinat || !marker) {
+    const markers = markersById.get(id) || [];
+    if (!d || !d.punya_koordinat || !markers.length) {
       map.closePopup();
       return;
     }
+    const marker = markers[0];
 
     let sudahBuka = false;
     const bukaPopup = () => {
       if (sudahBuka || seq !== popupSeq) return;
       sudahBuka = true;
+      const ll = marker.getLatLng();
       L.popup({ maxWidth: 300 })
-        .setLatLng(marker.getLatLng())
-        .setContent(popupHtml(d))
+        .setLatLng(ll)
+        .setContent(popupHtml(d, marker.titikInfo, ll.lat, ll.lng))
         .openOn(map);
     };
 
-    map.flyTo(marker.getLatLng(), 18, { duration: 0.75 });
+    if (markers.length > 1) {
+      map.flyToBounds(L.featureGroup(markers).getBounds(), { padding: [45, 45], maxZoom: 18, duration: 0.75 });
+    } else {
+      map.flyTo(marker.getLatLng(), 18, { duration: 0.75 });
+    }
     map.once('moveend', () => window.setTimeout(bukaPopup, 120));
     window.setTimeout(bukaPopup, 1400);
 
@@ -718,26 +749,33 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function popupHtml(d) {
+  function popupHtml(d, titik, lat, lng) {
+    const statusTitik = titik?.status_koord || (d.dalam ? 'Dalam Peta PS' : 'Luar Peta PS');
     const badgeSK = d.status_sk === 'Sesuai SK PS'
       ? '<span class="pop-badge pop-ok">Sesuai SK PS</span>'
       : '<span class="pop-badge pop-bad">Belum Sesuai SK PS</span>';
-    const badgeSpasial = d.dalam
+    const badgeSpasial = statusTitik === 'Dalam Peta PS'
       ? '<span class="pop-badge pop-ok">Dalam Peta PS</span>'
       : '<span class="pop-badge pop-bad">Luar Peta PS</span>';
+    const infoTitik = titik && titik.jumlah_titik > 1
+      ? `<div class="text-[10px] font-semibold text-forest-900 bg-forest-50 border border-forest-100 px-1.5 py-0.5 inline-block mb-1">Titik ${titik.urutan} dari ${titik.jumlah_titik}${titik.utama ? ' (utama)' : ''}</div>`
+      : '';
     const mirip = d.nama_mirip && d.kemiripan
       ? `<div class="mt-1 text-[11px] text-ink-muted">Kemiripan SK (${escHtml(parseFloat(d.kemiripan).toFixed(1))}%): <b>${escHtml(d.nama_mirip)}</b></div>`
       : '';
     const catatan = d.catatan
       ? `<div class="mt-1 border-l-2 border-kadaster-border bg-kadaster-light px-2 py-1 text-[11px] italic text-ink">${escHtml(d.catatan)}</div>`
       : '';
+    const latVal = lat ?? d.lat;
+    const lngVal = lng ?? d.lng;
     return `<div class="p-1">
-      <div class="font-bold text-ink text-sm mb-1">${escHtml(d.no)} — ${escHtml(d.nama || 'Tanpa Nama')}</div>
-      <div class="font-mono text-[11px] text-ink-muted mb-1">NIK: ${escHtml(d.nik || '—')}</div>
-      <div class="text-[11px] text-ink-muted mb-1">${escHtml(d.desa_kec || 'Desa/Kec. —')} · ${escHtml(d.petak_label)}</div>
+      <div class="font-bold text-ink text-sm mb-1">${escHtml(d.no)} - ${escHtml(d.nama || 'Tanpa Nama')}</div>
+      ${infoTitik}
+      <div class="font-mono text-[11px] text-ink-muted mb-1">NIK: ${escHtml(d.nik || '-')}</div>
+      <div class="text-[11px] text-ink-muted mb-1">${escHtml(d.desa_kec || 'Desa/Kec. -')} &middot; ${escHtml(d.petak_label)}</div>
       <div class="flex flex-wrap gap-1 my-1.5">${badgeSK}${badgeSpasial}</div>
       <div class="text-xs text-ink"><b>Luas:</b> <span class="font-mono font-bold">${escHtml(d.luas_fmt)} Ha</span></div>
-      <div class="font-mono text-[10px] text-ink-muted mt-1 pt-1 border-t border-kadaster-border">Lat ${escHtml(d.lat_fmt)} · Lng ${escHtml(d.lng_fmt)}</div>
+      <div class="font-mono text-[10px] text-ink-muted mt-1 pt-1 border-t border-kadaster-border">Lat ${escHtml(latVal != null ? Number(latVal).toFixed(6) : '-')} &middot; Lng ${escHtml(lngVal != null ? Number(lngVal).toFixed(6) : '-')}</div>
       ${mirip}${catatan}
     </div>`;
   }
@@ -777,7 +815,8 @@ document.addEventListener('DOMContentLoaded', () => {
           const d = PETANI[f.properties.id];
           if (!d) return;
 
-          const warna = !d.dalam ? '#9E2A2B' : (d.luas_lebih ? '#B45309' : '#1D5C3A');
+          const dalamTitik = f.properties.status_koord === 'Dalam Peta PS';
+          const warna = !dalamTitik ? '#9E2A2B' : (d.luas_lebih ? '#B45309' : '#1D5C3A');
           const marker = L.circleMarker([lat, lng], {
             radius: 7,
             color: '#FFFFFF',
@@ -785,9 +824,11 @@ document.addEventListener('DOMContentLoaded', () => {
             fillColor: warna,
             fillOpacity: 0.95
           });
-          marker.bindPopup(popupHtml(d), { maxWidth: 300 });
+          marker.titikInfo = f.properties;
+          marker.bindPopup(popupHtml(d, f.properties, lat, lng), { maxWidth: 300 });
           marker.on('click', () => pilihPetani(d.id, false));
-          markersById.set(d.id, marker);
+          if (!markersById.has(d.id)) markersById.set(d.id, []);
+          markersById.get(d.id).push(marker);
           semuaBounds.extend([lat, lng]);
         });
       }

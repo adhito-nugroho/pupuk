@@ -83,6 +83,21 @@ CREATE TABLE IF NOT EXISTS usulan_pupuk (
     INDEX idx_usulan_nik (nik)
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS usulan_titik (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usulan_id INT NOT NULL,
+    urutan INT NOT NULL DEFAULT 1,
+    x_raw VARCHAR(64) DEFAULT NULL,
+    y_raw VARCHAR(64) DEFAULT NULL,
+    x DOUBLE DEFAULT NULL,
+    y DOUBLE DEFAULT NULL,
+    status_koordinat VARCHAR(32) DEFAULT NULL,
+    dibuat_pada TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_titik_usulan_urutan (usulan_id, urutan),
+    FOREIGN KEY (usulan_id) REFERENCES usulan_pupuk(id) ON DELETE CASCADE,
+    INDEX idx_titik_usulan (usulan_id)
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS hasil_verifikasi (
     id INT AUTO_INCREMENT PRIMARY KEY,
     usulan_id INT NOT NULL,

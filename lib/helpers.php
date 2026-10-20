@@ -20,6 +20,26 @@ function norm_nama(?string $s): string {
     return trim($s);
 }
 
+/** Jenis kelamin: normalisasi varian L/P menjadi satu huruf. */
+function norm_jk(?string $s): ?string {
+    $raw = trim((string)($s ?? ''));
+    if ($raw === '') return null;
+
+    $v = mb_strtoupper($raw, 'UTF-8');
+    $compact = preg_replace('/[^A-Z]/', '', $v) ?? '';
+
+    if ($compact === 'L' || $compact === 'LK' || str_starts_with($compact, 'LAKI')
+        || in_array($compact, ['PRIA', 'MALE', 'M'], true)) {
+        return 'L';
+    }
+    if ($compact === 'P' || $compact === 'PR' || str_starts_with($compact, 'PEREMPUAN')
+        || str_starts_with($compact, 'WANITA') || in_array($compact, ['FEMALE', 'F'], true)) {
+        return 'P';
+    }
+
+    return null;
+}
+
 function cek_format_nik(?string $nik): ?string {
     $raw = trim((string)($nik ?? ''));
     $digits = norm_nik($raw);
@@ -211,6 +231,65 @@ function parse_dan_konversi_koordinat($xRaw, $yRaw, int $defaultZone = 49): arra
         'tipe' => 'Geografis (WGS84)',
         'is_utm' => false
     ];
+}
+
+/**
+ * Simpan seluruh titik satu petani (titik utama + titik tambahan) ke usulan_titik.
+ * Titik utama (urutan 1) tetap disalin dari kolom koordinat usulan_pupuk agar
+ * kompatibel dengan data lama.
+ */
+function simpan_titik_usulan(PDO $pdo, int $usulanId, array $row): int {
+    $st = $pdo->prepare(
+        'INSERT INTO usulan_titik (usulan_id, urutan, x_raw, y_raw, x, y)
+         VALUES (?, ?, ?, ?, ?, ?)'
+    );
+
+    $urutan = 1;
+    $st->execute([
+        $usulanId,
+        $urutan++,
+        trim((string)($row['x_raw'] ?? '')) ?: null,
+        trim((string)($row['y_raw'] ?? '')) ?: null,
+        $row['x'] ?? null,
+        $row['y'] ?? null,
+    ]);
+
+    foreach (($row['titik_tambahan'] ?? []) as $titik) {
+        $st->execute([
+            $usulanId,
+            $urutan++,
+            trim((string)($titik['x_raw'] ?? '')) ?: null,
+            trim((string)($titik['y_raw'] ?? '')) ?: null,
+            $titik['x'] ?? null,
+            $titik['y'] ?? null,
+        ]);
+    }
+
+    return $urutan - 1;
+}
+
+/**
+ * Ambil semua titik per usulan untuk satu KTH + versi.
+ * Hasil: [usulan_id => [ ['id'=>..,'urutan'=>..,'x'=>..,'y'=>..], ... ]]
+ */
+function ambil_titik_usulan(PDO $pdo, int $kthId, int $versiKe): array {
+    try {
+        $st = $pdo->prepare(
+            'SELECT t.* FROM usulan_titik t
+             JOIN usulan_pupuk u ON u.id = t.usulan_id
+             WHERE u.kth_id = ? AND u.versi_ke = ?
+             ORDER BY t.usulan_id, t.urutan, t.id'
+        );
+        $st->execute([$kthId, $versiKe]);
+    } catch (Throwable $e) {
+        return [];
+    }
+
+    $hasil = [];
+    foreach ($st->fetchAll() as $t) {
+        $hasil[(int)$t['usulan_id']][] = $t;
+    }
+    return $hasil;
 }
 
 /**

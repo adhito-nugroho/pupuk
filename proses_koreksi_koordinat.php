@@ -63,16 +63,64 @@ if ($pr) {
 }
 // Jika tidak ada poligon tersimpan, tetap izinkan koreksi (poligon belum diupload)
 
+// Status petani hanya "Dalam" bila seluruh titiknya berada di dalam poligon.
+$rings = $rings ?? [];
+$statusTitik = [];
+$stTitik = $pdo->prepare('SELECT id, urutan, x, y FROM usulan_titik WHERE usulan_id = ? ORDER BY urutan, id');
+$stTitik->execute([$usulanId]);
+$titikRows = $stTitik->fetchAll();
+
+if (empty($titikRows)) {
+    $titikRows = [[
+        'id' => null,
+        'urutan' => 1,
+        'x' => null,
+        'y' => null,
+    ]];
+}
+
+$updTitik = null;
+try {
+    $updTitik = $pdo->prepare('UPDATE usulan_titik SET status_koordinat = ? WHERE id = ?');
+} catch (Throwable $eTitik) {
+    $updTitik = null;
+}
+
+foreach ($titikRows as $t) {
+    $utama = (int)($t['urutan'] ?? 1) === 1;
+    $tx = $utama ? $lng : ($t['x'] !== null ? (float)$t['x'] : null);
+    $ty = $utama ? $lat : ($t['y'] !== null ? (float)$t['y'] : null);
+
+    if ($utama) {
+        $status = 'Dalam Peta PS';
+    } elseif ($tx === null || $ty === null) {
+        $status = 'Luar Peta PS';
+    } elseif (!$rings) {
+        $status = 'Luar Peta PS';
+    } else {
+        $status = point_in_geometry($tx, $ty, $rings) ? 'Dalam Peta PS' : 'Luar Peta PS';
+    }
+
+    $statusTitik[] = $status;
+    if ($updTitik && !empty($t['id'])) {
+        $updTitik->execute([$status, (int)$t['id']]);
+    }
+}
+
+$statusKeseluruhan = (!in_array('Luar Peta PS', $statusTitik, true))
+    ? 'Dalam Peta PS'
+    : 'Luar Peta PS';
+
 // Simpan koreksi ke hasil_verifikasi (koordinat asli di usulan_pupuk TIDAK diubah)
 $upd = $pdo->prepare(
     'UPDATE hasil_verifikasi
      SET koordinat_koreksi_x = ?,
          koordinat_koreksi_y = ?,
          dikoreksi_pada = NOW(),
-         status_koordinat = "Dalam Peta PS"
+         status_koordinat = ?
      WHERE usulan_id = ?'
 );
-$upd->execute([$lng, $lat, $usulanId]);
+$upd->execute([$lng, $lat, $statusKeseluruhan, $usulanId]);
 
 if ($upd->rowCount() === 0) {
     // Mungkin belum ada record hasil_verifikasi, buat dulu
@@ -118,7 +166,10 @@ try {
 
 echo json_encode([
     'ok'  => true,
-    'msg' => 'Koreksi koordinat berhasil disimpan. Status diperbarui ke "Dalam Peta PS".',
+    'msg' => $statusKeseluruhan === 'Dalam Peta PS'
+        ? 'Koreksi koordinat berhasil disimpan. Seluruh titik berada di dalam peta PS.'
+        : 'Koreksi titik utama berhasil disimpan, tetapi masih ada titik tambahan di luar peta PS.',
+    'status_koordinat' => $statusKeseluruhan,
     'lat' => $lat,
     'lng' => $lng,
 ]);

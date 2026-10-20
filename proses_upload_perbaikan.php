@@ -113,13 +113,14 @@ try {
         $noVal = (isset($r['no']) && is_numeric($r['no']) && (int)$r['no'] > 0 && (int)$r['no'] <= 2147483647)
             ? (int)$r['no']
             : ($idx + 1);
+        $jkVal = norm_jk((string)($r['jk'] ?? ''));
         $insU->execute([
             $kthId,
             $versiBaru,
             $noVal,
             $r['nik'] ?? null,
             $r['nama'] ?? null,
-            $r['jk'] ?? null,
+            $jkVal,
             $r['rt'] ?? null,
             $r['rw'] ?? null,
             $r['desa'] ?? null,
@@ -133,6 +134,7 @@ try {
             $r['x'] ?? null,
             $r['y'] ?? null,
         ]);
+        simpan_titik_usulan($pdo, (int)$pdo->lastInsertId(), $r);
     }
 
     // Insert record awal di kth_versi_usulan
