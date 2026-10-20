@@ -117,7 +117,7 @@ $baTgl   = $lap['tgl_ba']       ?? null;
         <span><b>Luas SK:</b> <?= e(number_format($luasSk, 2, ',', '.')) ?> Ha</span>
         <?php endif; ?>
         <span class="text-kadaster-border">·</span>
-        <span><b>Total Usulan:</b> <b class="text-forest-900"><?= e(number_format($totalLuasUsulan, 2, ',', '.')) ?> Ha</b><?= $luasSk > 0 ? " ({$pctLuasSk}%)" : '' ?></span>
+        <span><b>Total Usulan:</b> <b class="text-forest-900"><?= e(number_format($totalLuasUsulan, 2, ',', '.')) ?> Ha</b><?= $luasSk > 0 ? ' (' . number_format($pctLuasSk, 2, ',', '.') . '%)' : '' ?></span>
       </p>
     </div>
 
@@ -127,34 +127,22 @@ $baTgl   = $lap['tgl_ba']       ?? null;
         <svg class="w-3.5 h-3.5 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
         Kembali ke Tahap 03 — Uji Spasial &amp; Titik
       </a>
-      <a href="cetak.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>" target="_blank"
-         class="btn-forest px-4 py-2 text-xs inline-flex items-center gap-1.5 font-semibold shadow-sm">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-        Cetak Lembar Hasil
-      </a>
       <div class="flex flex-col gap-0.5">
-      <a href="export.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>&mode=lembar" class="btn-kadaster px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-700 hover:text-forest-900 border-kadaster-border" title="Rincian per petani + kop &amp; tanda tangan (.xlsx)">
-        <svg class="w-3.5 h-3.5 text-forest-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-        Excel Lembar Hasil (Per Petani)
-      </a>
-      <span class="text-[11px] text-gray-500 leading-tight">Rincian per petani + kop &amp; TTD · .xlsx</span>
-      </div>
-      <div class="flex flex-col gap-0.5">
-      <a href="export.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>&mode=verifikasi" class="btn-kadaster px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-700 hover:text-forest-900 border-kadaster-border" title="Unduh format Dinas: Hasil Verifikasi Data (No · Indikator · Kategori · Catatan + 3 TTD)">
-        <svg class="w-3.5 h-3.5 text-forest-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M9 8h6M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg>
-        Excel Verifikasi untuk Dinas
-      </a>
-      <span class="text-[11px] text-gray-500 leading-tight">Format dinas ringkas + 3 TTD · .xlsx</span>
-      </div>
-      <div class="flex flex-col gap-0.5">
-      <a href="export.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>"
+      <a href="export.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>" data-export-guard
          class="px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-semibold text-forest-900 bg-forest-50 border border-forest-700 hover:bg-forest-100 transition-colors shadow-sm">
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-        Excel Berita Acara (Narasi + Rekap)
+        Unduh Excel Berita Acara (Narasi + Rekap)
       </a>
       <span class="text-[11px] text-gray-500 leading-tight">Narasi + ringkasan + rincian · .xlsx</span>
       </div>
-      <a href="cetak_peta.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>" target="_blank" class="btn-kadaster px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-700 hover:text-forest-900">
+      <div class="flex flex-col gap-0.5">
+      <a href="export.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>&mode=verifikasi" data-export-guard class="btn-kadaster px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-700 hover:text-forest-900 border-kadaster-border" title="Unduh format Dinas: Hasil Verifikasi Data (No · Indikator · Kategori · Catatan + 3 TTD)">
+        <svg class="w-3.5 h-3.5 text-forest-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M9 8h6M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg>
+        Unduh Excel Verifikasi untuk Dinas
+      </a>
+      <span class="text-[11px] text-gray-500 leading-tight">Format dinas ringkas + 3 TTD · .xlsx</span>
+      </div>
+      <a href="cetak_peta.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>" target="_blank" data-export-guard class="btn-kadaster px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-700 hover:text-forest-900">
         <svg class="w-3.5 h-3.5 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
         Cetak Peta Lampiran
       </a>
@@ -289,7 +277,7 @@ $baTgl   = $lap['tgl_ba']       ?? null;
     </p>
   </div>
 
-  <form action="proses_laporan.php" method="post" class="space-y-5">
+  <form action="proses_laporan.php" method="post" id="form-laporan" class="space-y-5">
     <input type="hidden" name="kth_id" value="<?= $kthId ?>">
     <input type="hidden" name="v" value="<?= $versiAktif ?>">
     
@@ -313,16 +301,24 @@ $baTgl   = $lap['tgl_ba']       ?? null;
       <div>
         <label class="block text-xs font-semibold text-ink mb-1.5">Ringkasan Angka Audit</label>
         <div class="border border-kadaster-border bg-kadaster-light rounded px-3 py-2 text-[11px] text-ink-muted font-mono leading-relaxed">
-          Tot: <?= $hitung['total'] ?> | SK: <?= $hitung['sesuai'] ?> ok, <?= $hitung['tidak'] ?> beda | Peta: <?= $hitung['dalam'] ?> dlm, <?= $hitung['luar'] ?> luar | Luas: <?= number_format($totalLuasUsulan, 1, ',', '.') ?> Ha (<?= $pctLuasSk ?>%)<?= $hitung['lebih_luas'] > 0 ? " | >2Ha: {$hitung['lebih_luas']}" : '' ?>
+          Tot: <?= $hitung['total'] ?> | SK: <?= $hitung['sesuai'] ?> ok, <?= $hitung['tidak'] ?> beda | Peta: <?= $hitung['dalam'] ?> dlm, <?= $hitung['luar'] ?> luar | Luas: <?= number_format($totalLuasUsulan, 2, ',', '.') ?> Ha (<?= number_format($pctLuasSk, 2, ',', '.') ?>%)<?= $hitung['lebih_luas'] > 0 ? " | >2Ha: {$hitung['lebih_luas']}" : '' ?>
         </div>
         <p class="text-[11px] text-ink-muted mt-1">Dihitung otomatis dari basis data.</p>
       </div>
     </div>
 
     <div x-data="{ len: <?= mb_strlen($lap['narasi'] ?? '', 'UTF-8') ?> }">
-      <div class="flex items-center justify-between mb-1.5">
+      <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 mb-1.5">
         <label class="block text-xs font-semibold text-ink">Teks Narasi Berita Acara / Rekomendasi</label>
-        <span class="text-[11px] text-ink-muted font-mono" x-text="len + ' karakter'"></span>
+        <div class="flex flex-wrap items-center justify-end gap-x-3 gap-y-1.5">
+          <span class="text-[11px] text-ink-muted font-mono" x-text="len + ' karakter'"></span>
+          <button type="button" id="btn-reset-narasi"
+            class="inline-flex items-center gap-1 text-[11px] font-semibold text-forest-700 hover:text-forest-900 border border-transparent hover:border-kadaster-border hover:bg-white px-1.5 py-0.5 transition-colors"
+            title="Ganti teks dengan redaksi standar dari angka audit saat ini">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            Reset ke Narasi Standar
+          </button>
+        </div>
       </div>
       <textarea name="narasi" rows="7" x-on:input="len = $event.target.value.length"
         class="w-full border border-kadaster-border rounded px-3.5 py-2.5 text-xs bg-white text-ink focus:border-forest-900 outline-none leading-relaxed font-sans"><?= e($lap['narasi'] ?? '') ?></textarea>
@@ -332,32 +328,15 @@ $baTgl   = $lap['tgl_ba']       ?? null;
     </div>
 
     <div class="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-kadaster-border">
-      <div class="flex flex-wrap items-center gap-2">
+      <div class="flex flex-wrap items-center gap-3">
         <button type="submit" class="btn-forest px-5 py-2 text-xs inline-flex items-center gap-1.5 font-semibold">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
           Simpan Berita Acara Rekomendasi
         </button>
-        <!-- Duplikat "Unduh Excel Lembar Hasil" dihapus di sini (Fase 1c): gunakan tombol di header kanan halaman. Handler export.php?mode=lembar tidak diubah. -->
-        <div class="flex flex-col gap-0.5">
-        <a href="export.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>"
-           class="px-4 py-2 text-xs inline-flex items-center gap-1.5 font-semibold text-forest-900 bg-forest-50 border border-forest-700 hover:bg-forest-100 transition-colors shadow-sm"
-           title="Narasi + ringkasan + rincian satu KTH (.xlsx)">
-          <svg class="w-3.5 h-3.5 text-forest-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-          Unduh Excel Berita Acara (Narasi + Rekap)
-        </a>
-        <span class="text-[11px] text-gray-500 leading-tight">Narasi + ringkasan + rincian · .xlsx</span>
-        </div>
-        <div class="flex flex-col gap-0.5">
-        <a href="export.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>&mode=verifikasi" class="btn-kadaster px-4 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-700 hover:text-forest-900" title="Unduh format Dinas: Hasil Verifikasi Data + 3 TTD">
-          <svg class="w-3.5 h-3.5 text-forest-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M9 8h6M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 01-2-2z"/></svg>
-          Unduh Excel Verifikasi untuk Dinas
-        </a>
-        <span class="text-[11px] text-gray-500 leading-tight">Format dinas ringkas + 3 TTD · .xlsx</span>
-        </div>
-        <a href="cetak_peta.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>" target="_blank" class="btn-kadaster px-4 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-700 hover:text-forest-900">
-          <svg class="w-3.5 h-3.5 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-          Cetak Peta Lampiran
-        </a>
+        <span id="laporan-dirty-indicator" style="display:none" class="items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold text-audit-warn bg-audit-warnBg border border-audit-warnBorder">
+          <span class="w-1.5 h-1.5 bg-audit-warn inline-block"></span>
+          Perubahan redaksi belum disimpan
+        </span>
       </div>
 
       <div>
@@ -553,16 +532,105 @@ $baTgl   = $lap['tgl_ba']       ?? null;
   <div x-show="open" x-transition class="mt-3 pt-3 border-t border-kadaster-border">
     <p class="text-ink-muted mb-2">Redaksi default yang disusun oleh sistem menggunakan format klausul berikut:</p>
     <div class="bg-kadaster-light border border-kadaster-border rounded p-3 font-mono text-[11px] text-ink whitespace-pre-wrap leading-relaxed">Berdasarkan hasil verifikasi data usulan pupuk subsidi tahun [TAHUN] terdapat sebanyak [TOTAL] petani. Dari hasil telaah diperoleh data bahwa sejumlah [JUMLAH_SESUAI] petani sudah sesuai dengan SK [NOMOR_SK], terdapat [JUMLAH_TIDAK_SESUAI] petani yang belum masuk ke dalam SK tersebut. Titik koordinat petani yang mengusulkan pupuk, sejumlah [JUMLAH_DALAM_PETA] berada dalam peta areal [NAMA_KTH] dan [JUMLAH_LUAR_PETA] berada di luar peta. Total luas lahan yang diusulkan adalah seluas [TOTAL_LUAS] Ha atau [PERSEN_LUAS]% dari total luasan dalam SK PS ([LUAS_SK] Ha). Seluruh usulan petani memenuhi ketentuan batas maksimal luasan (tidak lebih dari 2 Ha per orang).</div>
-    <form action="proses_laporan.php" method="post" class="mt-3">
-      <input type="hidden" name="kth_id" value="<?= $kthId ?>">
-      <input type="hidden" name="v" value="<?= $versiAktif ?>">
-      <input type="hidden" name="reset_template" value="1">
-      <button type="submit" class="text-forest-700 hover:text-forest-900 text-[11px] font-semibold inline-flex items-center gap-1.5">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-        Reset teks ke redaksi standar dinas
-      </button>
-    </form>
+    <p class="text-[11px] text-ink-muted mt-3">
+      Gunakan tombol <b>Reset ke Narasi Standar</b> pada formulir di atas untuk memulihkan redaksi otomatis dari angka audit aktual.
+    </p>
   </div>
 </div>
+
+<script>
+(function () {
+  const form = document.getElementById('form-laporan');
+  if (!form) return;
+
+  const tahun = form.querySelector('[name="tahun"]');
+  const rekomendasi = form.querySelector('[name="rekomendasi"]');
+  const narasi = form.querySelector('[name="narasi"]');
+  const dirtyEl = document.getElementById('laporan-dirty-indicator');
+  const resetBtn = document.getElementById('btn-reset-narasi');
+  const CFG = <?= json_encode([
+      'total' => $hitung['total'],
+      'sesuai' => $hitung['sesuai'],
+      'tidak' => $hitung['tidak'],
+      'dalam' => $hitung['dalam'],
+      'luar' => $hitung['luar'],
+      'lebih_luas' => $hitung['lebih_luas'],
+      'total_luas' => $hitung['total_luas'],
+      'luas_sk' => $luasSk,
+      'tahun' => (string)(($lap['tahun'] ?? '') ?: ($k['tahun_usulan'] ?? date('Y'))),
+      'nomor_sk' => (string)($k['nomor_sk'] ?? ''),
+      'nama_kth' => (string)($k['nama_kth'] ?? ''),
+  ], JSON_UNESCAPED_UNICODE) ?>;
+
+  const initialNarasi = narasi.value;
+  const fmt2 = new Intl.NumberFormat('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  let dirty = false;
+  let sedangSimpan = false;
+
+  function setDirty(aktif) {
+    dirty = !!aktif;
+    dirtyEl.style.display = dirty ? 'inline-flex' : 'none';
+  }
+
+  function buatNarasiStandar() {
+    const tahunVal = (tahun.value || '').trim() || CFG.tahun;
+    const totalLuas = Number(CFG.total_luas) || 0;
+    const luasSk = Number(CFG.luas_sk) || 0;
+    const lebihLuas = Number(CFG.lebih_luas) || 0;
+    const pctLuas = luasSk > 0 ? Math.round((totalLuas / luasSk) * 10000) / 100 : 0;
+
+    const pctLuasStr = luasSk > 0
+      ? 'Total luas lahan yang diusulkan adalah seluas ' + fmt2.format(totalLuas) + ' Ha atau ' + fmt2.format(pctLuas) + '% dari total luasan dalam SK PS (' + fmt2.format(luasSk) + ' Ha). '
+      : 'Total luas lahan yang diusulkan adalah seluas ' + fmt2.format(totalLuas) + ' Ha. ';
+
+    const catatanLuas = lebihLuas > 0
+      ? 'Terdapat ' + lebihLuas + ' petani dengan luas usulan melebihi ketentuan batas maksimal 2 Ha per orang. '
+      : 'Seluruh usulan petani memenuhi ketentuan batas maksimal luasan (tidak lebih dari 2 Ha per orang). ';
+
+    return (
+      'Berdasarkan hasil verifikasi data usulan pupuk subsidi tahun ' + tahunVal + ' terdapat sebanyak ' + CFG.total + ' petani. ' +
+      'Dari hasil telaah diperoleh data bahwa sejumlah ' + CFG.sesuai + ' petani sudah sesuai dengan SK ' + (CFG.nomor_sk || '-') + ', ' +
+      'terdapat ' + CFG.tidak + ' petani yang belum masuk ke dalam SK tersebut. ' +
+      'Titik koordinat petani yang mengusulkan pupuk, sejumlah ' + CFG.dalam + ' berada dalam peta areal ' + (CFG.nama_kth || '-') + ' ' +
+      'dan ' + CFG.luar + ' berada di luar peta. ' +
+      pctLuasStr + catatanLuas
+    ).trim();
+  }
+
+  function onFieldChange(e) {
+    if (e.target === tahun || e.target === rekomendasi || e.target === narasi) setDirty(true);
+  }
+
+  form.addEventListener('input', onFieldChange);
+  form.addEventListener('change', onFieldChange);
+
+  resetBtn.addEventListener('click', function () {
+    if (narasi.value !== initialNarasi && !window.confirm('Ganti narasi dengan redaksi standar? Perubahan teks saat ini akan hilang.')) return;
+    narasi.value = buatNarasiStandar();
+    narasi.dispatchEvent(new Event('input', { bubbles: true }));
+    setDirty(true);
+    narasi.focus();
+  });
+
+  document.querySelectorAll('[data-export-guard]').forEach(function (link) {
+    link.addEventListener('click', function (e) {
+      if (!dirty) return;
+      if (!window.confirm('Perubahan redaksi belum disimpan. Lanjutkan mengunduh/mencetak versi yang tersimpan?')) {
+        e.preventDefault();
+      }
+    });
+  });
+
+  window.addEventListener('beforeunload', function (e) {
+    if (!dirty || sedangSimpan) return;
+    e.preventDefault();
+    e.returnValue = '';
+  });
+
+  form.addEventListener('submit', function () {
+    sedangSimpan = true;
+  });
+})();
+</script>
 
 <?php layout_foot(); ?>
