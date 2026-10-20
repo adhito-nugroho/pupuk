@@ -61,9 +61,31 @@ echo '<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3
 echo '<style>
 #peta-verifikasi { height: 490px; border-radius: 4px; overflow: hidden; background: #E5E7EB; border: 1px solid #DDD5C7; }
 .leaflet-popup-content { font-size: 12px; line-height: 1.5; min-width: 230px; font-family: "Plus Jakarta Sans", sans-serif; }
-.tr-petani { cursor: pointer; transition: background-color .15s ease; }
+.tr-petani { cursor: pointer; }
+.tr-petani td { transition: background-color .15s ease; }
 .tr-petani:hover td { background-color: #F6F2E9 !important; }
-.tr-aktif td { background-color: #E8EDE8 !important; }
+.tr-petani.is-highlighted td { background-color: #E8F0E9 !important; }
+.tr-petani.is-highlighted td:first-child { box-shadow: inset 4px 0 0 #1E4620; }
+.audit-filter-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background-color: #F6F2E9;
+  box-shadow: 0 1px 0 #DDD5C7;
+}
+.audit-table-wrap {
+  max-height: 580px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.audit-table-wrap thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: #F6F2E9;
+  box-shadow: inset 0 -1px 0 #DDD5C7;
+}
 .badge-merah { background-color: #FDF2F2; color: #9E2A2B; border: 1px solid #F2B8B8; font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 2px; display: inline-block; }
 .badge-hijau { background-color: #F0F7F2; color: #1D5C3A; border: 1px solid #B2D8C0; font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 2px; display: inline-block; }
 .badge-oranye { background-color: #FEF9EE; color: #B45309; border: 1px solid #F6DBA5; font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 2px; display: inline-block; }
@@ -122,14 +144,6 @@ echo '<style>
           Uji Ulang
         </button>
       </form>
-      <a href="cetak.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>" target="_blank" class="btn-kadaster px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-700 hover:text-forest-900">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-        Cetak Lembar Hasil
-      </a>
-      <a href="export.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>&mode=lembar" class="btn-kadaster px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-700 hover:text-forest-900" title="Unduh Lembar Hasil sebagai Excel">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-        Excel Lembar Hasil
-      </a>
       <a href="cetak_peta.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>" target="_blank" class="btn-kadaster px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-700 hover:text-forest-900">
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
         Cetak Format Peta
@@ -210,7 +224,7 @@ echo '<style>
 </div>
 
 <!-- ═══ PETA SEBARAN SPASIAL PETANI ═══ -->
-<div class="doc-card p-5 mb-5 fade-in">
+<div id="kartu-peta-verifikasi" class="doc-card p-5 mb-5 fade-in">
   <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-kadaster-border mb-3">
     <div>
       <h3 class="font-serif font-bold text-lg text-ink flex items-center gap-2">
@@ -301,8 +315,8 @@ echo '<style>
 </div>
 
 <!-- ═══ TABEL REGISTER HASIL UJI ═══ -->
-<div x-data="{ filter: 'semua', cari: '' }" class="doc-card overflow-hidden fade-in">
-  <div class="flex flex-wrap gap-3 p-4 border-b border-kadaster-border bg-kadaster-light items-center justify-between">
+<div x-data="{ filter: 'semua', cari: '' }" class="doc-card fade-in">
+  <div class="audit-filter-bar flex flex-wrap gap-3 p-4 border-b border-kadaster-border items-center justify-between">
     <div class="flex flex-wrap items-center gap-3">
       <div class="flex items-center gap-2">
         <label class="text-xs font-semibold text-ink-muted">Filter Audit:</label>
@@ -330,7 +344,7 @@ echo '<style>
     </div>
   </div>
 
-  <div class="overflow-x-auto">
+  <div class="audit-table-wrap" role="region" aria-label="Tabel hasil verifikasi" tabindex="0">
     <table class="min-w-full text-xs">
       <thead>
         <tr class="bg-[#F6F2E9] border-b border-kadaster-border text-ink">
@@ -371,13 +385,13 @@ echo '<style>
           </td>
           <td class="px-3 py-2 font-medium text-ink">
             <div><?= e($r['nama'] ?? '-') ?></div>
-            <?php if (!empty($r['koordinat_x_raw']) || !empty($r['koordinat_y_raw'])): ?>
-              <div class="text-[10px] text-ink-faint font-mono mt-0.5" title="Koordinat asal berkas">
-                📍 <?= e($r['koordinat_x_raw'] ?? '') ?>, <?= e($r['koordinat_y_raw'] ?? '') ?>
-              </div>
-            <?php elseif ($r['koordinat_x'] !== null && $r['koordinat_y'] !== null): ?>
+            <?php if ($r['koordinat_x'] !== null && $r['koordinat_y'] !== null): ?>
               <div class="text-[10px] text-ink-faint font-mono mt-0.5" title="Koordinat Geografis WGS84">
-                📍 <?= number_format((float)$r['koordinat_x'], 6) ?>, <?= number_format((float)$r['koordinat_y'], 6) ?>
+                📍 Lat <?= number_format((float)$r['koordinat_y'], 6, '.', '') ?> · Lng <?= number_format((float)$r['koordinat_x'], 6, '.', '') ?>
+              </div>
+            <?php elseif (!empty($r['koordinat_x_raw']) || !empty($r['koordinat_y_raw'])): ?>
+              <div class="text-[10px] text-ink-faint font-mono mt-0.5" title="Koordinat asal berkas, belum terkonversi">
+                📍 Koordinat asal: <?= e($r['koordinat_x_raw'] ?? '') ?>, <?= e($r['koordinat_y_raw'] ?? '') ?>
               </div>
             <?php endif; ?>
             <?php if ($koordIssue !== null): ?>
@@ -408,25 +422,43 @@ echo '<style>
           <td class="px-3 py-2 text-center">
             <?= badge_koord((string)($r['status_koordinat'] ?? '')) ?>
           </td>
-          <td class="px-3 py-2" x-data="{ edit: false, val: <?= e(json_encode((string)($r['catatan'] ?? ''), JSON_UNESCAPED_UNICODE)) ?>, saved: true }">
+          <td class="px-3 py-2 catatan-verifikator" x-data="catatanVerifikator(<?= (int)$r['hasil_id'] ?>, <?= e(json_encode((string)($r['catatan'] ?? ''), JSON_UNESCAPED_UNICODE)) ?>)">
             <?php if (!empty($formatBelumTercatat)): ?>
               <div class="mb-1 px-2 py-1 rounded border-l-2 border-audit-revisi bg-red-50 text-[10px] text-audit-revisi leading-snug">
                 <b>Keterangan format:</b> <?= e(implode(' ', $formatBelumTercatat)) ?>
               </div>
             <?php endif; ?>
             <template x-if="!edit">
-              <div @click="edit = true" class="cursor-text hover:bg-kadaster-light rounded px-2 py-1 min-h-[1.75rem] flex items-center justify-between group border border-transparent hover:border-kadaster-border" title="Klik untuk mengedit catatan verifikasi">
-                <span class="text-xs text-ink" x-text="val || '—'"></span>
-                <span class="text-[10px] text-ink-muted opacity-0 group-hover:opacity-100 italic">Edit</span>
-                <span x-show="!saved" class="text-[10px] text-audit-revisi ml-1">…menyimpan</span>
+              <div @click="buka()"
+                   class="group cursor-text rounded border border-transparent hover:border-kadaster-border hover:bg-kadaster-light px-2 py-1 min-h-[1.75rem] flex items-center justify-between gap-2 transition-colors"
+                   title="Klik untuk mengedit catatan verifikasi">
+                <span class="text-xs leading-snug" :class="val ? 'text-ink' : 'text-ink-faint italic'" x-text="val || 'Klik untuk menambah catatan…'"></span>
+                <span class="flex items-center gap-1 shrink-0">
+                  <span x-show="status === 'menyimpan'" x-cloak class="text-[10px] text-ink-muted">Menyimpan…</span>
+                  <span x-show="status === 'tersimpan'" x-cloak class="text-[10px] text-audit-valid font-semibold">✓ Tersimpan</span>
+                  <span x-show="status === 'gagal'" x-cloak class="text-[10px] text-audit-revisi font-semibold">Gagal</span>
+                  <svg class="w-3 h-3 text-ink-faint opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                  </svg>
+                </span>
               </div>
             </template>
             <template x-if="edit">
-              <div class="flex gap-1.5 items-center">
-                <input type="text" x-model="val" @keydown.enter="edit = false; saved = false; fetch('proses_catatan.php', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: 'hasil_id=<?= (int)$r['hasil_id'] ?>&catatan=' + encodeURIComponent(val)}).then(r => r.json()).then(j => { saved = true; if (!j.ok) alert('Gagal simpan: ' + j.msg); }).catch(e => { saved = true; alert('Gagal simpan'); })"
-                  class="w-full border border-forest-900 rounded px-2 py-1 text-xs outline-none bg-white text-ink">
-                <button @click="edit = false; saved = false; fetch('proses_catatan.php', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: 'hasil_id=<?= (int)$r['hasil_id'] ?>&catatan=' + encodeURIComponent(val)}).then(r => r.json()).then(j => { saved = true; if (!j.ok) alert('Gagal simpan: ' + j.msg); }).catch(e => { saved = true; alert('Gagal simpan'); })"
-                  class="px-2 py-1 rounded bg-forest-900 text-white text-[11px] font-semibold hover:bg-forest-800">Simpan</button>
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <input x-ref="input" type="text" x-model="val" autocomplete="off"
+                         aria-label="Catatan verifikator"
+                         @keydown.enter.prevent="simpan()"
+                         @keydown.escape.prevent="batal()"
+                         @blur="simpan()"
+                         class="w-full border border-forest-900 rounded px-2 py-1 text-xs outline-none bg-white text-ink focus:ring-2 focus:ring-forest-900/15">
+                  <button type="button" @mousedown.prevent @click="simpan()"
+                    class="px-2 py-1 rounded bg-forest-900 text-white text-[11px] font-semibold hover:bg-forest-800 whitespace-nowrap">Simpan</button>
+                </div>
+                <div class="mt-1 flex items-center justify-between gap-2 text-[10px] text-ink-faint">
+                  <span>Enter simpan · Esc batal</span>
+                  <span x-show="saving" x-cloak class="text-ink-muted">Menyimpan…</span>
+                </div>
               </div>
             </template>
           </td>
@@ -466,6 +498,61 @@ echo '<style>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script>
+window.catatanVerifikator = function (hasilId, nilaiAwal) {
+  const awal = String(nilaiAwal ?? '');
+  return {
+    edit: false,
+    val: awal,
+    saved: awal,
+    saving: false,
+    status: '',
+    get dirty() {
+      return this.val !== this.saved;
+    },
+    buka() {
+      this.edit = true;
+      this.status = '';
+      this.$nextTick(() => this.$refs.input?.focus());
+    },
+    batal() {
+      if (this.saving) return;
+      this.val = this.saved;
+      this.edit = false;
+      this.status = '';
+    },
+    async simpan() {
+      if (this.saving) return;
+      if (!this.dirty) {
+        this.edit = false;
+        return;
+      }
+      const nilai = this.val;
+      this.saving = true;
+      this.status = 'menyimpan';
+      try {
+        const res = await fetch('proses_catatan.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: 'hasil_id=' + encodeURIComponent(hasilId) + '&catatan=' + encodeURIComponent(nilai),
+        });
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.msg || 'Gagal menyimpan catatan');
+        this.saved = nilai;
+        this.edit = false;
+        this.status = 'tersimpan';
+        setTimeout(() => {
+          if (this.status === 'tersimpan') this.status = '';
+        }, 2500);
+      } catch (err) {
+        this.status = 'gagal';
+        this.edit = false;
+      } finally {
+        this.saving = false;
+      }
+    },
+  };
+};
+
 (function () {
   const KTHID = <?= (int)$kthId ?>;
   const VERSI = <?= (int)$versiAktif ?>;
@@ -489,6 +576,14 @@ echo '<style>
 
   function badgeHtml(teks, kls) { return `<span class="badge-${kls}">${teks}</span>`; }
 
+  function tandaiBaris(uid, scrollKeBaris = false) {
+    document.querySelectorAll('.tr-petani.is-highlighted').forEach(el => el.classList.remove('is-highlighted'));
+    const baris = document.getElementById('baris-' + uid);
+    if (!baris) return;
+    baris.classList.add('is-highlighted');
+    if (scrollKeBaris) baris.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
   const peta = L.map('peta-verifikasi', { zoomControl: true });
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap kontributor', maxZoom: 19,
@@ -496,6 +591,7 @@ echo '<style>
 
   const cluster = L.markerClusterGroup({ disableClusteringAtZoom: 16, maxClusterRadius: 50 });
   const markerMap = {};
+  let popupSeq = 0;
 
   fetch(`peta_data.php?kth_id=${KTHID}&v=${VERSI}`)
     .then(r => r.json())
@@ -526,16 +622,12 @@ echo '<style>
             <div class="text-ink-muted text-xs mb-1">${[p.desa, p.kecamatan].filter(Boolean).join(', ')}</div>
             <div class="flex gap-1 flex-wrap my-1.5">${bSK} ${bKoord}</div>
             ${mirip}${catatan}
-            <div class="text-ink-muted font-mono text-[10px] mt-1 pt-1 border-t border-kadaster-border">📍 ${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
+            <div class="text-ink-muted font-mono text-[10px] mt-1 pt-1 border-t border-kadaster-border">📍 Lat ${lat.toFixed(6)} · Lng ${lng.toFixed(6)}</div>
           </div>`;
 
         const marker = L.marker([lat, lng], { icon: buatIkon(p.warna, p.no ? String(p.no) : '?') })
           .bindPopup(popup, { maxWidth: 300 });
-        marker.on('click', () => {
-          document.querySelectorAll('.tr-aktif').forEach(el => el.classList.remove('tr-aktif'));
-          const baris = document.getElementById('baris-' + p.id);
-          if (baris) { baris.classList.add('tr-aktif'); baris.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-        });
+        marker.on('click', () => tandaiBaris(p.id, false));
         cluster.addLayer(marker);
         markerMap[p.id] = marker;
         bounds.push(L.latLng(lat, lng));
@@ -566,13 +658,34 @@ echo '<style>
   window.zoomKePetani = function(uid) {
     const marker = markerMap[uid];
     if (!marker) { alert('Petani ini tidak memiliki data koordinat lintang/bujur.'); return; }
-    peta.flyTo(marker.getLatLng(), 17, { duration: 1 });
-    setTimeout(() => marker.openPopup(), 1100);
-    document.querySelectorAll('.tr-aktif').forEach(el => el.classList.remove('tr-aktif'));
-    const baris = document.getElementById('baris-' + uid);
-    if (baris) baris.classList.add('tr-aktif');
-    document.getElementById('peta-verifikasi').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    const seq = ++popupSeq;
+    tandaiBaris(uid, false);
+
+    let sudahBuka = false;
+    const bukaPopup = () => {
+      if (sudahBuka || seq !== popupSeq) return;
+      sudahBuka = true;
+      const isi = marker.getPopup()?.getContent() || '';
+      L.popup({ maxWidth: 300 })
+        .setLatLng(marker.getLatLng())
+        .setContent(isi)
+        .openOn(peta);
+    };
+
+    peta.flyTo(marker.getLatLng(), 17, { duration: 0.8 });
+    peta.once('moveend', () => window.setTimeout(bukaPopup, 120));
+    window.setTimeout(bukaPopup, 1400);
+
+    document.getElementById('kartu-peta-verifikasi')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
+
+  document.querySelectorAll('tr.tr-petani').forEach(tr => {
+    tr.addEventListener('click', e => {
+      if (e.target.closest('button, a, input, select, textarea, [contenteditable], .catatan-verifikator')) return;
+      window.zoomKePetani(Number(tr.dataset.uid));
+    });
+  });
 
   // ─── FITUR KOREKSI KOORDINAT (INPUT) ──────────────────────────────────────
   let koreksiAktif = null;   // { uid, marker, namaAsli }
@@ -633,7 +746,7 @@ echo '<style>
       const ll = marker.getLatLng();
       inputLat.value = ll.lat.toFixed(6);
       inputLng.value = ll.lng.toFixed(6);
-      asliEl.textContent = ll.lat.toFixed(6) + ', ' + ll.lng.toFixed(6);
+      asliEl.textContent = 'Lat ' + ll.lat.toFixed(6) + ' · Lng ' + ll.lng.toFixed(6);
       // Zoom ke marker
       document.getElementById('peta-verifikasi').scrollIntoView({ behavior: 'smooth', block: 'start' });
       peta.flyTo(ll, 17, { duration: 0.8 });
@@ -722,7 +835,7 @@ echo '<style>
     });
 
     previewMarker = L.marker([lat, lng], { icon: ikonPreview })
-      .bindPopup(`<div class="p-1 text-xs"><b>Preview Posisi Baru</b><br>${lat.toFixed(6)}, ${lng.toFixed(6)}<br><span style="color:${masuk?'#1D5C3A':'#9E2A2B'}">${masuk ? '✓ Dalam Peta PS' : '✗ Luar Peta PS'}</span></div>`)
+      .bindPopup(`<div class="p-1 text-xs"><b>Preview Posisi Baru</b><br>Lat ${lat.toFixed(6)} · Lng ${lng.toFixed(6)}<br><span style="color:${masuk?'#1D5C3A':'#9E2A2B'}">${masuk ? '✓ Dalam Peta PS' : '✗ Luar Peta PS'}</span></div>`)
       .addTo(peta);
     peta.flyTo([lat, lng], 17, { duration: 0.8 });
     setTimeout(() => previewMarker.openPopup(), 900);
@@ -775,7 +888,7 @@ echo '<style>
           marker.setIcon(buatIkon('hijau', koreksiAktif.uid ? String(koreksiAktif.uid) : '?'));
         }
         batalKoreksi();
-        alert('✅ Koordinat baru berhasil disimpan.\n' + namaAsli + '\n📍 ' + lat.toFixed(6) + ', ' + lng.toFixed(6) + '\n\nKoordinat asli di data usulan tidak berubah.');
+        alert('✅ Koordinat baru berhasil disimpan.\n' + namaAsli + '\n📍 Lat ' + lat.toFixed(6) + ' · Lng ' + lng.toFixed(6) + '\n\nKoordinat asli di data usulan tidak berubah.');
       } else {
         btn.disabled = false;
         btn.textContent = '✓ Simpan Koordinat Baru';

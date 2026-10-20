@@ -141,7 +141,7 @@ layout_kth_subnav($kth, 'peta', $versiAktif, $daftarVersi);
 .map-pane {
   position: sticky;
   top: 16px;
-  height: calc(100vh - 160px);
+  height: calc(100vh - 280px);
   min-height: 520px;
   display: flex;
   flex-direction: column;
@@ -206,8 +206,12 @@ layout_kth_subnav($kth, 'peta', $versiAktif, $daftarVersi);
 .map-legend {
   position: absolute;
   left: 12px;
-  bottom: 12px;
-  z-index: 650;
+  bottom: 16px;
+  z-index: 700;
+  width: max-content;
+  max-width: calc(100% - 24px);
+  max-height: calc(100% - 96px);
+  overflow-y: auto;
   padding: 8px 10px;
   background: rgba(255, 255, 255, .96);
   border: 1px solid #DDD5C7;
@@ -215,6 +219,7 @@ layout_kth_subnav($kth, 'peta', $versiAktif, $daftarVersi);
   color: #57655B;
   font-size: 10px;
   line-height: 1.7;
+  pointer-events: auto;
 }
 .legend-line {
   display: inline-block;
@@ -233,7 +238,7 @@ layout_kth_subnav($kth, 'peta', $versiAktif, $daftarVersi);
   vertical-align: middle;
 }
 .list-pane {
-  height: calc(100vh - 160px);
+  height: calc(100vh - 280px);
   min-height: 520px;
   display: flex;
   flex-direction: column;
@@ -247,13 +252,13 @@ layout_kth_subnav($kth, 'peta', $versiAktif, $daftarVersi);
 }
 .petani-row {
   cursor: pointer;
-  border-left: 3px solid transparent;
+  border-left: 4px solid transparent;
   transition: background-color .12s ease, border-color .12s ease;
 }
 .petani-row:hover { background: #F6F3EC; }
-.petani-row.is-selected {
-  background: #F0F7F2;
-  border-left-color: #1D5C3A;
+.petani-row.active-item {
+  background: #EEF5F0;
+  border-left-color: #1E4620;
 }
 .petani-row:focus-visible {
   outline: 2px solid #1D5C3A;
@@ -322,6 +327,7 @@ layout_kth_subnav($kth, 'peta', $versiAktif, $daftarVersi);
     min-height: 0;
   }
   .list-scroll { max-height: 560px; }
+  .map-legend { bottom: 12px; max-height: calc(100% - 84px); font-size: 9.5px; }
 }
 </style>
 
@@ -654,12 +660,12 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedId = id;
     rowsById.forEach((row, rowId) => {
       const aktif = rowId === id;
-      row.classList.toggle('is-selected', aktif);
+      row.classList.toggle('active-item', aktif);
       row.setAttribute('aria-pressed', aktif ? 'true' : 'false');
     });
     if (scrollKeBaris) {
       const row = rowsById.get(id);
-      if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (row) row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
     highlightMarker(id);
   }
