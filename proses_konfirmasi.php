@@ -18,6 +18,13 @@ $metaNamaKph = trim((string)($_POST['meta_nama_kph'] ?? ''));
 $metaLuasAreal = trim((string)($_POST['meta_luas_areal'] ?? ''));
 $metaTanggalSk = trim((string)($_POST['meta_tanggal_sk'] ?? ''));
 
+$pdo = db();
+$stmtKth = $pdo->prepare('SELECT versi_aktif FROM kth WHERE id = ?');
+$stmtKth->execute([$kthId]);
+$kthInfo = $stmtKth->fetch() ?: [];
+$versiAktif = max(1, (int)($kthInfo['versi_aktif'] ?? 1));
+$kecamatanUsulan = kecamatan_usulan_by_nik($pdo, $kthId, $versiAktif);
+
 $dataAnggotaJson = $_POST['data_anggota_json'] ?? '';
 $bersih = [];
 $tolak = 0;
@@ -33,12 +40,13 @@ if (!empty($dataAnggotaJson)) {
                 $tolak++;
                 continue;
             }
+            $kecVal = norm_nama((string)($item['kecamatan'] ?? '')) ?: ($kecamatanUsulan[$nk] ?? null);
             $bersih[] = [
                 'nama' => $nm,
                 'nik' => $nk,
                 'jk' => mb_strtoupper(trim((string)($item['jk'] ?? '')), 'UTF-8') ?: null,
                 'desa' => norm_nama((string)($item['desa'] ?? '')) ?: null,
-                'kecamatan' => norm_nama((string)($item['kecamatan'] ?? '')) ?: null
+                'kecamatan' => $kecVal
             ];
         }
     }
@@ -60,12 +68,13 @@ if (empty($bersih) && !empty($_POST['nik']) && is_array($_POST['nik'])) {
             $tolak++;
             continue;
         }
+        $kecVal = norm_nama((string)($kec[$i] ?? '')) ?: ($kecamatanUsulan[$nk] ?? null);
         $bersih[] = [
             'nama' => $nm,
             'nik' => $nk,
             'jk' => mb_strtoupper(trim((string)($jk[$i] ?? '')), 'UTF-8') ?: null,
             'desa' => norm_nama((string)($desa[$i] ?? '')) ?: null,
-            'kecamatan' => norm_nama((string)($kec[$i] ?? '')) ?: null
+            'kecamatan' => $kecVal
         ];
     }
 }
@@ -76,7 +85,6 @@ if (!$bersih) {
     exit;
 }
 
-$pdo = db();
 try {
     $pdo->beginTransaction();
 

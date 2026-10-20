@@ -670,3 +670,27 @@ function sinkronkan_koordinat_utm_ke_wgs84(PDO $pdo, ?int $onlyKthId = null, boo
         'daftar_kth' => array_values($affectedKthVersi),
     ];
 }
+
+/**
+ * Peta NIK terormalisasi => kecamatan dari data usulan pada KTH/versi tertentu.
+ * Dipakai sebagai fallback saat file SK tidak memuat kolom kecamatan.
+ */
+function kecamatan_usulan_by_nik(PDO $pdo, int $kthId, int $versiKe): array {
+    if ($kthId <= 0 || $versiKe <= 0) return [];
+
+    try {
+        $st = $pdo->prepare('SELECT nik, kecamatan FROM usulan_pupuk WHERE kth_id = ? AND versi_ke = ? AND nik IS NOT NULL AND nik <> "" AND kecamatan IS NOT NULL AND kecamatan <> ""');
+        $st->execute([$kthId, $versiKe]);
+    } catch (Throwable $e) {
+        return [];
+    }
+
+    $map = [];
+    foreach ($st->fetchAll() as $r) {
+        $nik = norm_nik((string)($r['nik'] ?? ''));
+        $kec = norm_nama((string)($r['kecamatan'] ?? ''));
+        if ($nik === '' || $kec === '' || isset($map[$nik])) continue;
+        $map[$nik] = $kec;
+    }
+    return $map;
+}

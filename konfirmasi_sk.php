@@ -32,6 +32,16 @@ foreach ($rows as $r) {
 $daftarVersi = ambil_daftar_versi($pdo, $kthId);
 $versiAktif = ambil_versi_terpilih($k, isset($_GET['v']) ? (int)$_GET['v'] : null);
 
+// File SK sering tidak memuat kolom kecamatan; lengkapi dari data usulan via NIK.
+$kecamatanUsulan = kecamatan_usulan_by_nik($pdo, $kthId, $versiAktif);
+foreach ($rows as $idx => $r) {
+    if (trim((string)($r['kecamatan'] ?? '')) !== '') continue;
+    $nik = norm_nik((string)($r['nik'] ?? ''));
+    if ($nik !== '' && isset($kecamatanUsulan[$nik])) {
+        $rows[$idx]['kecamatan'] = $kecamatanUsulan[$nik];
+    }
+}
+
 layout_head('Konfirmasi Anggota SK — ' . $k['nama_kth']);
 layout_kth_subnav($k, 'sk', $versiAktif, $daftarVersi);
 ?>
