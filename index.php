@@ -74,19 +74,22 @@ layout_head('Buku Register Kasus', 'daftar');
 
   <!-- Baris Data Faktual (Ledger Summary) -->
   <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 text-xs">
-    <div class="border-l-2 border-kadaster-brown pl-3">
+    <button type="button" data-kpi-filter="semua" aria-pressed="true" onclick="setRegisterFilter('semua')"
+      class="text-left border-l-2 border-kadaster-brown pl-3 py-1 rounded-sm bg-forest-50 ring-1 ring-forest-900/10 transition-all duration-150 hover:bg-forest-50/80 focus:outline-none focus:ring-2 focus:ring-forest-900/30">
       <div class="text-[11px] text-ink-muted font-medium">Total Kasus KTH</div>
       <div class="font-mono text-xl font-bold text-ink tabular-nums mt-0.5"><?= $totalKasus ?> <span class="text-xs font-normal text-ink-muted">berkas</span></div>
-    </div>
-    <div class="border-l-2 border-audit-valid pl-3">
+    </button>
+    <button type="button" data-kpi-filter="Dapat Ditindaklanjuti" aria-pressed="false" onclick="setRegisterFilter('Dapat Ditindaklanjuti')"
+      class="text-left border-l-2 border-audit-valid pl-3 py-1 rounded-sm transition-all duration-150 hover:bg-forest-50/80 focus:outline-none focus:ring-2 focus:ring-audit-valid/30">
       <div class="text-[11px] text-ink-muted font-medium">Dapat Ditindaklanjuti</div>
       <div class="font-mono text-xl font-bold text-audit-valid tabular-nums mt-0.5"><?= $dapatTindak ?> <span class="text-xs font-normal text-ink-muted">kasus</span></div>
-    </div>
-    <div class="border-l-2 border-audit-revisi pl-3">
+    </button>
+    <button type="button" data-kpi-filter="Perlu Revisi" aria-pressed="false" onclick="setRegisterFilter('Perlu Revisi')"
+      class="text-left border-l-2 border-audit-revisi pl-3 py-1 rounded-sm transition-all duration-150 hover:bg-red-50/50 focus:outline-none focus:ring-2 focus:ring-audit-revisi/30">
       <div class="text-[11px] text-ink-muted font-medium">Memerlukan Revisi</div>
       <div class="font-mono text-xl font-bold text-audit-revisi tabular-nums mt-0.5"><?= $perluRevisi ?> <span class="text-xs font-normal text-ink-muted">kasus</span></div>
-    </div>
-    <div class="border-l-2 border-kadaster-dark pl-3">
+    </button>
+    <div class="border-l-2 border-kadaster-dark pl-3 py-1">
       <div class="text-[11px] text-ink-muted font-medium">Total Petani Terdata</div>
       <div class="font-mono text-xl font-bold text-ink tabular-nums mt-0.5"><?= number_format($totalPetani, 0, ',', '.') ?> <span class="text-xs font-normal text-ink-muted">orang</span></div>
     </div>
@@ -95,16 +98,42 @@ layout_head('Buku Register Kasus', 'daftar');
 
 <!-- ═══ Tabel Register Berkas ═══ -->
 <div class="doc-card overflow-hidden">
-  <div class="px-5 py-3.5 bg-[#FAF8F3] border-b border-kadaster-border flex items-center justify-between">
-    <div class="flex items-center gap-2">
-      <span class="w-2 h-2 bg-kadaster-brown inline-block"></span>
-      <h3 class="text-xs font-bold uppercase tracking-wider text-ink">
-        Daftar Berkas Terdaftar
-      </h3>
+  <div class="px-5 py-3.5 bg-[#FAF8F3] border-b border-kadaster-border">
+    <div class="flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 bg-kadaster-brown inline-block"></span>
+        <h3 class="text-xs font-bold uppercase tracking-wider text-ink">
+          Daftar Berkas Terdaftar
+        </h3>
+      </div>
+      <span id="register-count" class="font-mono text-[11px] text-ink-faint whitespace-nowrap">
+        <?= count($rows) ?> entri tercatat
+      </span>
     </div>
-    <span class="font-mono text-[11px] text-ink-faint">
-      <?= count($rows) ?> entri tercatat
-    </span>
+
+    <div class="mt-3 flex flex-col lg:flex-row lg:items-center gap-2.5">
+      <div class="relative flex-1 min-w-[220px]">
+        <svg class="w-3.5 h-3.5 text-ink-faint absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <input id="register-search" type="search" oninput="filterRegister()"
+          placeholder="Cari nama KTH/LMDH, KPH, atau Nomor SK..."
+          class="w-full border border-kadaster-border bg-white pl-9 pr-3 py-2 text-xs text-ink placeholder:text-ink-faint focus:border-forest-900 focus:outline-none rounded-sm">
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <label for="filter-status" class="text-[11px] font-semibold text-ink-muted whitespace-nowrap">Status:</label>
+        <select id="filter-status" onchange="setRegisterFilter(this.value)"
+          class="border border-kadaster-border bg-white px-3 py-2 text-xs font-medium text-ink focus:border-forest-900 focus:outline-none rounded-sm min-w-[190px]">
+          <option value="semua">Semua Status</option>
+          <option value="Dapat Ditindaklanjuti">Dapat Ditindaklanjuti</option>
+          <option value="Perlu Revisi">Perlu Revisi</option>
+        </select>
+        <button type="button" id="register-reset" onclick="resetRegisterFilter()"
+          class="hidden px-2.5 py-2 text-[11px] font-semibold text-forest-900 border border-forest-300 bg-forest-50 hover:bg-forest-100 rounded-sm transition-colors">
+          Reset
+        </button>
+      </div>
+    </div>
   </div>
 
 <?php if (!$rows): ?>
@@ -143,8 +172,20 @@ layout_head('Buku Register Kasus', 'daftar');
         $totalVersi = count($listVersi);
         $versiAktif = (int)($r['versi_aktif'] ?? 1);
         if ($versiAktif <= 0) $versiAktif = 1;
+        $rek = $r['rekomendasi'] ?? '';
+        $hrefUtama = $rek === '' ? 'konfirmasi_sk.php?kth_id=' . $kthId : 'hasil.php?kth_id=' . $kthId;
+        $labelUtama = $rek === '' ? 'Buka Berkas' : 'Verifikasi';
+        $cariRegister = mb_strtolower(implode(' ', array_filter([
+          (string)($r['nama_kth'] ?? ''),
+          (string)($r['nama_kph'] ?? ''),
+          (string)($r['nomor_sk'] ?? ''),
+        ])), 'UTF-8');
       ?>
-      <tbody x-data="{ open: false }" class="border-b border-kadaster-border/70 last:border-b-0">
+      <tbody x-data="{ open: false, menuOpen: false, menuStyle: '' }"
+        data-register-row
+        data-status="<?= e($rek) ?>"
+        data-cari="<?= e($cariRegister) ?>"
+        class="border-b border-kadaster-border/70 last:border-b-0">
         <tr class="hairline-row bg-white hover:bg-forest-50/30 transition-colors">
           <td class="py-3 px-3.5 text-center font-mono text-[11px] text-ink-faint">
             <div class="flex items-center justify-center gap-1.5">
@@ -164,7 +205,9 @@ layout_head('Buku Register Kasus', 'daftar');
           </td>
           <td class="py-3 px-3.5">
             <div class="font-bold text-ink leading-snug flex items-center gap-2">
-              <span><?= e($r['nama_kth']) ?></span>
+              <a href="<?= $hrefUtama ?>" class="hover:text-forest-700 hover:underline decoration-forest-300 underline-offset-2 transition-colors">
+                <?= e($r['nama_kth']) ?>
+              </a>
               <?php if ($totalVersi > 1): ?>
                 <button @click="open = !open" 
                         type="button" 
@@ -198,10 +241,7 @@ layout_head('Buku Register Kasus', 'daftar');
             <?= (int)$r['jml_sk'] ?>
           </td>
           <td class="py-3 px-3.5">
-            <?php
-              $rek = $r['rekomendasi'] ?? '';
-              if ($rek === 'Dapat Ditindaklanjuti'):
-            ?>
+            <?php if ($rek === 'Dapat Ditindaklanjuti'): ?>
               <span class="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-semibold text-audit-valid bg-audit-validBg border border-audit-validBorder border-l-2 border-l-audit-valid">
                 <span class="w-1.5 h-1.5 bg-audit-valid inline-block"></span>
                 Dapat Ditindaklanjuti
@@ -216,44 +256,68 @@ layout_head('Buku Register Kasus', 'daftar');
             <?php endif; ?>
           </td>
           <td class="py-3 px-3.5">
-            <div class="flex items-center justify-center gap-1">
-              <a href="konfirmasi_sk.php?kth_id=<?= (int)$r['id'] ?>"
-                 title="Tahap 02 — Konfirmasi SK"
-                 class="px-2 py-1 border border-kadaster-border text-ink-muted hover:text-forest-900 hover:border-forest-900 bg-[#FAF8F3] text-[11px] font-medium transition-colors">
-                SK
+            <div class="flex items-center justify-center gap-1.5">
+              <a href="<?= $hrefUtama ?>"
+                 title="<?= $rek === '' ? 'Buka berkas kasus' : 'Buka hasil verifikasi kasus' ?>"
+                 class="btn-forest px-3 py-1.5 text-[11px] font-semibold inline-flex items-center gap-1.5 whitespace-nowrap">
+                <span><?= $labelUtama ?></span>
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                </svg>
               </a>
-              <a href="hasil.php?kth_id=<?= (int)$r['id'] ?>"
-                 title="Tahap 03 — Uji Spasial & Titik"
-                 class="px-2 py-1 border border-kadaster-border text-ink-muted hover:text-forest-900 hover:border-forest-900 bg-[#FAF8F3] text-[11px] font-medium transition-colors">
-                Peta
-              </a>
-              <a href="cetak_peta.php?kth_id=<?= (int)$r['id'] ?>"
-                 target="_blank"
-                 title="Cetak Peta Format BPKH"
-                 class="px-2 py-1 border border-kadaster-border text-ink-muted hover:text-forest-900 hover:border-forest-900 bg-[#FAF8F3] text-[11px] font-medium transition-colors">
-                Cetak
-              </a>
-              <a href="laporan.php?kth_id=<?= (int)$r['id'] ?>"
-                 title="Tahap 04 — Berita Acara Rekomendasi"
-                 class="px-2 py-1 border border-kadaster-border text-ink-muted hover:text-forest-900 hover:border-forest-900 bg-[#FAF8F3] text-[11px] font-medium transition-colors">
-                Laporan
-              </a>
-              <a href="perbaikan.php?kth_id=<?= (int)$r['id'] ?>"
+              <a href="perbaikan.php?kth_id=<?= $kthId ?>"
                  title="Histori & Unggah Perbaikan Usulan"
-                 class="px-2 py-1 border border-kadaster-border text-forest-900 hover:bg-forest-100 hover:border-forest-900 bg-forest-50/80 text-[11px] font-semibold transition-colors flex items-center gap-1">
-                <span>Perbaikan</span>
+                 class="btn-kadaster px-2.5 py-1.5 text-[11px] font-semibold inline-flex items-center gap-1 whitespace-nowrap">
+                Perbaikan
               </a>
-              <form action="hapus.php" method="post" class="inline m-0 ml-1"
-                 onsubmit="return confirm('Hapus seluruh berkas kasus ini beserta semua versi perbaikannya?')">
-                <input type="hidden" name="kth_id" value="<?= (int)$r['id'] ?>">
-                <button type="submit"
-                   title="Hapus Berkas Kasus Lengkap"
-                   class="px-1.5 py-1 border border-audit-revisiBorder text-audit-revisi hover:bg-audit-revisiBg text-[11px] transition-colors">
-                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                 </svg>
+              <div class="relative">
+                <button type="button" x-ref="menuBtn"
+                  @click="menuOpen = !menuOpen; if (menuOpen) { const r = $refs.menuBtn.getBoundingClientRect(); const top = (r.bottom + 232 > window.innerHeight) ? Math.max(8, r.top - 228) : (r.bottom + 4); menuStyle = 'top:' + top + 'px; left:' + Math.max(8, r.right - 192) + 'px;'; }"
+                  :aria-expanded="menuOpen ? 'true' : 'false'" aria-haspopup="true"
+                  class="w-7 h-7 border border-kadaster-border bg-white text-ink-muted hover:text-forest-900 hover:border-forest-900 inline-flex items-center justify-center transition-colors"
+                  title="Aksi lainnya">
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <circle cx="4" cy="10" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="16" cy="10" r="1.5"/>
+                  </svg>
                 </button>
-              </form>
+                <template x-teleport="body">
+                  <div @keydown.escape.window="menuOpen = false" @scroll.window="menuOpen = false" @resize.window="menuOpen = false" @register-filter.window="menuOpen = false">
+                    <div x-show="menuOpen" x-cloak @click="menuOpen = false" class="fixed inset-0 z-[90]"></div>
+                    <div x-show="menuOpen" x-cloak :style="menuStyle"
+                      class="fixed z-[100] w-48 bg-white border border-kadaster-border shadow-lg rounded-sm py-1 text-left">
+                      <div class="px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider text-ink-faint border-b border-kadaster-border mb-1">
+                        Aksi Berkas
+                      </div>
+                      <a href="konfirmasi_sk.php?kth_id=<?= $kthId ?>" @click="menuOpen = false"
+                         class="block px-3 py-2 text-[11px] font-medium text-ink-muted hover:text-forest-900 hover:bg-kadaster-light transition-colors">
+                        Konfirmasi SK Anggota
+                      </a>
+                      <a href="hasil.php?kth_id=<?= $kthId ?>" @click="menuOpen = false"
+                         class="block px-3 py-2 text-[11px] font-medium text-ink-muted hover:text-forest-900 hover:bg-kadaster-light transition-colors">
+                        Hasil Verifikasi &amp; Peta
+                      </a>
+                      <a href="laporan.php?kth_id=<?= $kthId ?>" @click="menuOpen = false"
+                         class="block px-3 py-2 text-[11px] font-medium text-ink-muted hover:text-forest-900 hover:bg-kadaster-light transition-colors">
+                        Berita Acara &amp; Laporan
+                      </a>
+                      <a href="cetak_peta.php?kth_id=<?= $kthId ?>" target="_blank" rel="noopener" @click="menuOpen = false"
+                         class="block px-3 py-2 text-[11px] font-medium text-ink-muted hover:text-forest-900 hover:bg-kadaster-light transition-colors">
+                        Cetak Peta
+                      </a>
+                      <div class="border-t border-kadaster-border mt-1 pt-1">
+                        <form action="hapus.php" method="post" class="m-0"
+                           onsubmit="return confirm('Hapus seluruh berkas kasus ini beserta semua versi perbaikannya?')">
+                          <input type="hidden" name="kth_id" value="<?= $kthId ?>">
+                          <button type="submit"
+                             class="w-full text-left px-3 py-2 text-[11px] font-medium text-audit-revisi hover:bg-audit-revisiBg transition-colors">
+                            Hapus Berkas Kasus
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+              </div>
             </div>
           </td>
         </tr>
@@ -397,8 +461,71 @@ layout_head('Buku Register Kasus', 'daftar');
       <?php endforeach; ?>
     </table>
   </div>
+
+  <div id="register-empty" class="hidden py-14 px-6 text-center">
+    <div class="w-11 h-11 border border-dashed border-kadaster-brown/40 text-kadaster-brown mx-auto flex items-center justify-center mb-3">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+      </svg>
+    </div>
+    <h3 class="font-serif text-base font-bold text-ink mb-1">Tidak Ada Berkas yang Cocok</h3>
+    <p class="text-xs text-ink-muted mb-3">Ubah kata kunci pencarian atau filter status rekomendasi.</p>
+    <button type="button" onclick="resetRegisterFilter()" class="btn-kadaster px-3 py-1.5 text-xs font-medium">Reset Filter</button>
+  </div>
 <?php endif; ?>
 </div>
 </div>
+
+<script>
+function filterRegister() {
+  const q = (document.getElementById('register-search')?.value || '').toLowerCase().trim();
+  const status = document.getElementById('filter-status')?.value || 'semua';
+  window.dispatchEvent(new Event('register-filter'));
+  let visible = 0;
+
+  document.querySelectorAll('[data-register-row]').forEach(row => {
+    const cocokCari = !q || (row.dataset.cari || '').includes(q);
+    const cocokStatus = status === 'semua' || (row.dataset.status || '') === status;
+    const tampil = cocokCari && cocokStatus;
+    row.style.display = tampil ? '' : 'none';
+    if (tampil) visible++;
+  });
+
+  const counter = document.getElementById('register-count');
+  if (counter) counter.textContent = visible + ' entri tercatat';
+
+  const empty = document.getElementById('register-empty');
+  if (empty) empty.classList.toggle('hidden', visible !== 0);
+
+  const reset = document.getElementById('register-reset');
+  if (reset) reset.classList.toggle('hidden', !q && status === 'semua');
+}
+
+function setRegisterFilter(status) {
+  const select = document.getElementById('filter-status');
+  if (select && select.value !== status) select.value = status;
+
+  document.querySelectorAll('[data-kpi-filter]').forEach(btn => {
+    const aktif = btn.dataset.kpiFilter === status;
+    btn.setAttribute('aria-pressed', aktif ? 'true' : 'false');
+    btn.classList.toggle('bg-forest-50', aktif);
+    btn.classList.toggle('ring-1', aktif);
+    btn.classList.toggle('ring-forest-900/10', aktif);
+  });
+
+  filterRegister();
+}
+
+function resetRegisterFilter() {
+  const search = document.getElementById('register-search');
+  if (search) search.value = '';
+  setRegisterFilter('semua');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const select = document.getElementById('filter-status');
+  setRegisterFilter(select ? select.value : 'semua');
+});
+</script>
 
 <?php layout_foot(); ?>

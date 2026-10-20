@@ -122,11 +122,13 @@ $baTgl   = $lap['tgl_ba']       ?? null;
     </div>
 
     <div class="flex flex-wrap items-center gap-2">
-      <a href="hasil.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>" class="btn-kadaster px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium">
+      <a href="hasil.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>"
+         class="px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-ink-muted hover:text-forest-900 border border-transparent hover:border-kadaster-border hover:bg-white/70 transition-colors">
         <svg class="w-3.5 h-3.5 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
         Kembali ke Tahap 03 — Uji Spasial &amp; Titik
       </a>
-      <a href="cetak.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>" target="_blank" class="btn-kadaster px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-700 hover:text-forest-900 border-kadaster-border">
+      <a href="cetak.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>" target="_blank"
+         class="btn-forest px-4 py-2 text-xs inline-flex items-center gap-1.5 font-semibold shadow-sm">
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
         Cetak Lembar Hasil
       </a>
@@ -145,8 +147,9 @@ $baTgl   = $lap['tgl_ba']       ?? null;
       <span class="text-[11px] text-gray-500 leading-tight">Format dinas ringkas + 3 TTD · .xlsx</span>
       </div>
       <div class="flex flex-col gap-0.5">
-      <a href="export.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>" class="btn-kadaster px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-700 hover:text-forest-900 border-kadaster-border">
-        <svg class="w-3.5 h-3.5 text-forest-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      <a href="export.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>"
+         class="px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-semibold text-forest-900 bg-forest-50 border border-forest-700 hover:bg-forest-100 transition-colors shadow-sm">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
         Excel Berita Acara (Narasi + Rekap)
       </a>
       <span class="text-[11px] text-gray-500 leading-tight">Narasi + ringkasan + rincian · .xlsx</span>
@@ -336,7 +339,9 @@ $baTgl   = $lap['tgl_ba']       ?? null;
         </button>
         <!-- Duplikat "Unduh Excel Lembar Hasil" dihapus di sini (Fase 1c): gunakan tombol di header kanan halaman. Handler export.php?mode=lembar tidak diubah. -->
         <div class="flex flex-col gap-0.5">
-        <a href="export.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>" class="btn-kadaster px-4 py-2 text-xs inline-flex items-center gap-1.5 font-medium text-forest-700 hover:text-forest-900" title="Narasi + ringkasan + rincian satu KTH (.xlsx)">
+        <a href="export.php?kth_id=<?= $kthId ?>&v=<?= $versiAktif ?>"
+           class="px-4 py-2 text-xs inline-flex items-center gap-1.5 font-semibold text-forest-900 bg-forest-50 border border-forest-700 hover:bg-forest-100 transition-colors shadow-sm"
+           title="Narasi + ringkasan + rincian satu KTH (.xlsx)">
           <svg class="w-3.5 h-3.5 text-forest-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
           Unduh Excel Berita Acara (Narasi + Rekap)
         </a>

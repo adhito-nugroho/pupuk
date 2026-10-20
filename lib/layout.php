@@ -431,6 +431,7 @@ function layout_kth_subnav(array $kth, string $aktif, int $versiAktif = 1, array
           <?php endforeach; ?>
         </div>
 
+        <?php if ($aktif !== 'laporan'): ?>
         <div class="flex items-center gap-2 py-1">
           <a href="cetak.php?kth_id=<?= $kthId ?><?= $vParam ?>" target="_blank" rel="noopener"
              class="btn-kadaster px-3 py-1.5 text-xs inline-flex items-center gap-1.5 font-medium text-forest-900 hover:bg-white">
@@ -444,6 +445,7 @@ function layout_kth_subnav(array $kth, string $aktif, int $versiAktif = 1, array
             <span>Excel Lembar Hasil (Per Petani)</span>
           </a>
         </div>
+        <?php endif; ?>
       </div>
     </div>
     <?php
